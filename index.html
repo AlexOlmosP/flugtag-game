@@ -27,7 +27,7 @@ html, body {
   overflow: hidden;
   position: fixed;
   touch-action: none;
-  background: #2A6FA8;
+  background: url('Cartoon_panoramic_skyline_202604022029.png') center -35vh / 100% auto no-repeat, linear-gradient(to bottom, #5AABE0 0%, #87CEEB 40%, #B8D4E8 100%);
   font-family: var(--font-body);
 }
 canvas { display: block; width: 100%; height: 100%; }
@@ -234,10 +234,90 @@ canvas { display: block; width: 100%; height: 100%; }
 .upg-card-btn.disabled { background: #555; opacity: 0.5; cursor: default; }
 .upg-card-btn.maxed { background: var(--yellow); color: var(--dark); }
 
+/* Garage Screen */
+#screen-garage { justify-content: space-between; padding: 16px; }
+.garage-top {
+  width: 100%; display: flex; justify-content: space-between; align-items: flex-start;
+}
+.garage-coins {
+  font-family: var(--font-display); font-size: 22px;
+  color: var(--yellow); text-shadow: var(--text-shadow);
+}
+.garage-title {
+  font-family: var(--font-display); font-size: 20px;
+  color: rgba(255,255,255,0.6); text-shadow: var(--text-shadow);
+  text-transform: uppercase; letter-spacing: 2px;
+}
+.garage-middle {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; max-width: 500px; padding: 0 8px;
+  position: absolute; top: 18%; left: 50%; transform: translateX(-50%);
+}
+.garage-arrow {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: rgba(255,255,255,0.12); border: 3px solid rgba(255,255,255,0.3);
+  color: white; font-size: 26px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  user-select: none; transition: background 0.15s, transform 0.1s;
+  pointer-events: auto; flex-shrink: 0;
+}
+.garage-arrow:hover { background: rgba(255,255,255,0.25); }
+.garage-arrow:active { transform: scale(0.88); }
+.garage-name-plate {
+  background: linear-gradient(180deg, rgba(180,136,85,0.95), rgba(138,102,51,0.95));
+  border: 3px solid rgba(255,255,255,0.3);
+  border-radius: 14px; padding: 8px 28px;
+  font-family: var(--font-display); font-size: 28px;
+  color: white; text-shadow: var(--text-shadow-heavy);
+  text-transform: uppercase; min-width: 160px; text-align: center;
+}
+.garage-bottom {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  pointer-events: auto;
+}
+.garage-dots {
+  display: flex; gap: 8px;
+}
+.garage-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: rgba(255,255,255,0.25); transition: background 0.2s;
+}
+.garage-dot.active { background: var(--yellow); }
+/* Skin row (nested under craft selector) */
+.skin-row {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: rgba(0,0,0,0.2); border-radius: 12px;
+  padding: 10px 20px; margin-top: 4px;
+  pointer-events: auto;
+}
+.skin-label {
+  font-family: var(--font-display); font-size: 11px;
+  color: rgba(255,255,255,0.4); text-transform: uppercase;
+  letter-spacing: 3px;
+}
+.skin-selector {
+  display: flex; align-items: center; gap: 10px;
+}
+.skin-name {
+  font-family: var(--font-display); font-size: 18px;
+  color: white; text-shadow: var(--text-shadow);
+  min-width: 100px; text-align: center;
+}
+.skin-arrow {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.25);
+  color: white; font-size: 14px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  user-select: none; transition: background 0.15s;
+}
+.skin-arrow:hover { background: rgba(255,255,255,0.25); }
+.skin-arrow:active { transform: scale(0.9); }
+
 @media (max-width: 400px) {
   .upg-card { width: 100px; padding: 8px 6px 6px; }
   .upg-card-icon { font-size: 26px; }
   .upg-card-btn { font-size: 11px; }
+  .garage-name-plate { font-size: 20px; padding: 6px 18px; }
 }
 
 /* Floating text */
@@ -275,7 +355,37 @@ canvas { display: block; width: 100%; height: 100%; }
   <div class="best-distance" id="title-best"></div>
 </div>
 
-<!-- Aim HUD (with upgrade cards at bottom) -->
+<!-- Garage Screen (craft + skin selection) -->
+<div id="screen-garage" class="screen passthrough">
+  <div class="garage-top">
+    <div class="garage-coins" id="garage-coins">0</div>
+    <div class="garage-title">Workshop</div>
+    <div style="width:60px"></div>
+  </div>
+  <!-- Craft selector (primary) -->
+  <div class="garage-middle">
+    <div class="garage-arrow" id="craft-prev">&#9664;</div>
+    <div class="garage-name-plate" id="craft-name">BATHTUB</div>
+    <div class="garage-arrow" id="craft-next">&#9654;</div>
+  </div>
+  <div class="garage-bottom">
+    <!-- Craft dots -->
+    <div class="garage-dots" id="craft-dots"></div>
+    <!-- Skin selector (nested under craft) -->
+    <div class="skin-row" id="skin-row">
+      <div class="skin-label">SKIN</div>
+      <div class="skin-selector">
+        <div class="skin-arrow" id="skin-prev">&#9664;</div>
+        <div class="skin-name" id="skin-name">Classic</div>
+        <div class="skin-arrow" id="skin-next">&#9654;</div>
+      </div>
+      <div class="garage-dots" id="skin-dots"></div>
+    </div>
+    <button class="game-btn green pulse" id="btn-garage-fly" style="font-size:28px;padding:16px 52px;">FLY!</button>
+  </div>
+</div>
+
+<!-- Aim HUD (with upgrade cards) -->
 <div id="screen-aim-hud" class="screen passthrough">
   <div class="aim-coins" id="aim-coins">0</div>
   <div class="aim-best" id="aim-best"></div>
@@ -312,6 +422,7 @@ canvas { display: block; width: 100%; height: 100%; }
     <div class="results-coins" id="res-coins">+0 COINS</div>
     <div class="results-best" id="res-best"></div>
     <div class="results-buttons">
+      <button class="game-btn secondary" id="btn-garage">GARAGE</button>
       <button class="game-btn green pulse" id="btn-fly-again">FLY AGAIN</button>
     </div>
   </div>
@@ -322,6 +433,8 @@ canvas { display: block; width: 100%; height: 100%; }
 <div id="float-layer" style="position:absolute;inset:0;pointer-events:none;z-index:20;overflow:hidden;"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/meshoptimizer@0.20.0/meshopt_decoder.js"></script>
 <script>
 // ===== CONSTANTS & CONFIG =====
 const DEG2RAD = Math.PI / 180;
@@ -344,11 +457,69 @@ const UPGRADES = {
   income:    { name: 'Income',    baseCost: 120, perLevel: 130, icon: '\u{1F4B0}' },
 };
 
+// ===== CRAFT CATALOG =====
+// Each craft has skins — each skin is a complete GLB
+const CRAFTS = [
+  { id: 'bathtub', name: 'Bathtub', skins: [
+    { name: 'Classic',   file: 'Meshy_AI_Gilded_Bath_0330161619_texture.glb',       rotY: Math.PI * 1.5 },
+    { name: 'Cardboard', file: 'Meshy_AI_Bathtub_Cardboard_0402170410_texture.glb', rotY: Math.PI * 0.5 },
+  ]},
+  { id: 'rocket', name: 'Rocket', skins: [
+    { name: 'Classic', file: 'Meshy_AI_Red_Stripe_Rocket_0330160432_texture.glb', rotY: Math.PI * 0.5 },
+    { name: 'Delta',   file: 'Meshy_AI_Rocket_delta_0402170813_texture.glb',      rotY: Math.PI * 0.5 },
+  ]},
+  { id: 'banana', name: 'Banana', skins: [
+    { name: 'Classic', file: 'Meshy_AI_banana_3d_0329211148_texture.glb',       rotY: Math.PI * 0.5 },
+    { name: 'Biplane', file: 'Meshy_AI_Banana_Bip_0402164037_texture.glb',      rotY: Math.PI * 0.5 },
+  ]},
+  { id: 'couch', name: 'Couch', skins: [
+    { name: 'Classic', file: 'Meshy_AI_couch_car_0330162428_texture.glb',       rotY: 0 },
+    { name: 'Winged',  file: 'Meshy_AI_Couch_Standard_0402165535_texture.glb',  rotY: 0 },
+  ]},
+  { id: 'shoe', name: 'Shoe', skins: [
+    { name: 'Classic', file: 'Meshy_AI_shoe_car_0330163356_texture.glb',       rotY: Math.PI * 0.5 },
+    { name: 'Biplane', file: 'Meshy_AI_Shoe_Bip_0402164732_texture.glb',      rotY: Math.PI * 0.5 },
+  ]},
+];
+let currentCraftIdx = 0;
+let currentSkinIdx = 0;
+const glbCache = {};
+
+function loadGLB(url) {
+  if (glbCache[url]) return Promise.resolve(glbCache[url].clone());
+  return new Promise((resolve, reject) => {
+    const loader = new THREE.GLTFLoader();
+    loader.setMeshoptDecoder(MeshoptDecoder);
+    loader.load(url, (gltf) => {
+      glbCache[url] = gltf.scene;
+      resolve(gltf.scene.clone());
+    }, undefined, (err) => {
+      console.warn('GLB load failed:', url, err);
+      reject(err);
+    });
+  });
+}
+
+function toonifyModel(model) {
+  model.traverse((child) => {
+    if (child.isMesh && child.material) {
+      const origColor = child.material.color ? child.material.color.clone() : new THREE.Color(0xcccccc);
+      const origMap = child.material.map || null;
+      const mat = new THREE.MeshToonMaterial({ color: origColor, gradientMap: gradientMap5 });
+      if (origMap) mat.map = origMap;
+      child.material = mat;
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+  });
+}
+
 // ===== SAVE / LOAD =====
 const SAVE_KEY = 'flugtag:save';
 const defaultSave = {
   coins: 0, totalDistance: 0, bestDistance: 0, totalFlights: 0,
   upgrades: { slingshot: 0, plane: 0, income: 0 },
+  craftIdx: 0, skinIdx: 0,
 };
 let save;
 function loadSave() {
@@ -379,7 +550,8 @@ function getIncomeMulti()    { return 1.0 + save.upgrades.income * 0.3; }
 
 // ===== THREE.JS SCENE SETUP =====
 const canvas = document.getElementById('game-canvas');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setClearColor(0x000000, 0); // fully transparent clear
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
@@ -443,40 +615,18 @@ sunLight.shadow.camera.top = 60;
 sunLight.shadow.camera.bottom = -20;
 scene.add(sunLight);
 
-const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x005577, 0.5);
+const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x3D7A2D, 0.5);
 scene.add(hemiLight);
 
-// ===== SKY =====
-(function createSky() {
-  const skyGeo = new THREE.SphereGeometry(900, 32, 32);
-  const skyMat = new THREE.ShaderMaterial({
-    side: THREE.BackSide,
-    uniforms: {
-      topColor: { value: new THREE.Color(0x2A6FA8) },
-      bottomColor: { value: new THREE.Color(0xB8D4E8) },
-    },
-    vertexShader: `varying vec3 vWorldPos;
-      void main() {
-        vec4 wp = modelMatrix * vec4(position, 1.0);
-        vWorldPos = wp.xyz;
-        gl_Position = projectionMatrix * viewMatrix * wp;
-      }`,
-    fragmentShader: `uniform vec3 topColor; uniform vec3 bottomColor;
-      varying vec3 vWorldPos;
-      void main() {
-        float h = normalize(vWorldPos).y;
-        float t = clamp(h * 0.5 + 0.5, 0.0, 1.0);
-        gl_FragColor = vec4(mix(bottomColor, topColor, t), 1.0);
-      }`,
-  });
-  scene.add(new THREE.Mesh(skyGeo, skyMat));
-})();
+// ===== SKY (transparent — CSS background shows through) =====
+scene.background = null;
 
-// ===== WATER =====
-const waterGeo = new THREE.PlaneGeometry(4000, 4000, 64, 64);
+// ===== RIVER / LAKE WATER =====
+const RIVER_WIDTH = 50;
+const waterGeo = new THREE.PlaneGeometry(RIVER_WIDTH, 4000, 32, 64);
 waterGeo.rotateX(-Math.PI / 2);
-const waterMat = toonMat(0x00AACC);
-waterMat.emissive = new THREE.Color(0x003344);
+const waterMat = toonMat(0x3399AA); // Fresh water — greener than ocean
+waterMat.emissive = new THREE.Color(0x114433);
 waterMat.emissiveIntensity = 0.15;
 const water = new THREE.Mesh(waterGeo, waterMat);
 water.receiveShadow = true;
@@ -489,28 +639,326 @@ function updateWater(time) {
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
     const z = pos.getZ(i);
-    pos.setY(i, Math.sin(x * 0.05 + time * 0.8) * 0.3 + Math.sin(z * 0.03 + time * 0.6) * 0.2);
+    pos.setY(i, Math.sin(x * 0.08 + time * 0.8) * 0.15 + Math.sin(z * 0.04 + time * 0.6) * 0.12);
   }
   pos.needsUpdate = true;
 }
 
-// ===== FOG =====
-scene.fog = new THREE.Fog(0x87CEEB, 100, 800);
+// ===== RIVERBANKS (grassy ground on both sides) =====
+const bankMat = toonMat(0x5CAD3B);
+const bankDirtMat = toonMat(0x8B6D3F);
 
-// ===== RAMP / PLATFORM =====
+function createBank(side) { // side: -1 (left) or +1 (right)
+  const bankGroup = new THREE.Group();
+  // Main grass surface — very wide to fill the screen even at high altitude
+  const grassGeo = new THREE.PlaneGeometry(1000, 4000);
+  grassGeo.rotateX(-Math.PI / 2);
+  const grass = new THREE.Mesh(grassGeo, bankMat);
+  grass.receiveShadow = true;
+  grass.position.set(side * (RIVER_WIDTH / 2 + 500), 0.05, 0);
+  bankGroup.add(grass);
+
+  // Dirt edge along the water
+  const edgeGeo = new THREE.BoxGeometry(3, 1.2, 4000);
+  const edge = new THREE.Mesh(edgeGeo, bankDirtMat);
+  edge.position.set(side * (RIVER_WIDTH / 2 + 1.5), 0.5, 0);
+  edge.castShadow = true;
+  bankGroup.add(edge);
+
+  // Grass tuft on top of dirt edge
+  const turfGeo = new THREE.BoxGeometry(3.5, 0.15, 4000);
+  const turf = new THREE.Mesh(turfGeo, bankMat);
+  turf.position.set(side * (RIVER_WIDTH / 2 + 1.5), 1.1, 0);
+  bankGroup.add(turf);
+
+  scene.add(bankGroup);
+  return bankGroup;
+}
+createBank(-1);
+createBank(1);
+
+// ===== HORIZON HILLS (blend 3D ground into background) =====
+(function createHorizonHills() {
+  const hillMat = toonMat(0x4A9E35); // slightly darker green
+  const hillMatLight = toonMat(0x5CAD3B);
+
+  // Row of rolling hills across the horizon
+  const hillData = [
+    // [x, z, width, height, depth]
+    [-120, 1400, 180, 25, 60],
+    [-30,  1450, 200, 35, 70],
+    [80,   1400, 160, 28, 55],
+    [180,  1430, 190, 30, 65],
+    [-200, 1420, 170, 22, 50],
+    [0,    1500, 250, 40, 80],
+    [-150, 1480, 200, 32, 60],
+    [120,  1490, 220, 36, 70],
+  ];
+
+  hillData.forEach(([x, z, w, h, d]) => {
+    const geo = new THREE.SphereGeometry(1, 8, 6);
+    geo.scale(w / 2, h, d / 2);
+    const mat = Math.random() > 0.5 ? hillMat : hillMatLight;
+    const hill = new THREE.Mesh(geo, mat);
+    hill.position.set(x, 0, z);
+    scene.add(hill);
+  });
+
+  // Flat horizon cap — wide green strip at the far end
+  const capGeo = new THREE.PlaneGeometry(3000, 600);
+  capGeo.rotateX(-Math.PI / 2);
+  const cap = new THREE.Mesh(capGeo, hillMatLight);
+  cap.position.set(0, 0.1, 1600);
+  scene.add(cap);
+})();
+
+// ===== TREES ALONG RIVERBANKS =====
+function createTree(x, z) {
+  const group = new THREE.Group();
+  // Trunk
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.25, 0.35, 2.5, 6),
+    toonMat(0x8B6D3F)
+  );
+  trunk.position.y = 1.25;
+  trunk.castShadow = true;
+  group.add(trunk);
+  // Foliage (2-3 stacked spheres)
+  const leafMat = toonMat(0x3D8B37);
+  const sizes = [1.8, 1.4, 0.9];
+  sizes.forEach((s, i) => {
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(s, 7, 6), leafMat);
+    leaf.position.y = 3.0 + i * 1.1;
+    leaf.scale.y = 0.75;
+    leaf.castShadow = true;
+    group.add(leaf);
+  });
+  addOutline(trunk, 0.015);
+  group.position.set(x, 0, z);
+  group.scale.setScalar(0.8 + Math.random() * 0.6);
+  scene.add(group);
+  return group;
+}
+
+// Plant trees along both banks
+for (let z = -20; z < 1500; z += 8 + Math.random() * 12) {
+  const offsetL = RIVER_WIDTH / 2 + 6 + Math.random() * 25;
+  const offsetR = RIVER_WIDTH / 2 + 6 + Math.random() * 25;
+  createTree(-offsetL + (Math.random() - 0.5) * 4, z);
+  createTree(offsetR + (Math.random() - 0.5) * 4, z);
+}
+
+// ===== DENSE FOREST (further from river) =====
+for (let z = -20; z < 1500; z += 5 + Math.random() * 8) {
+  for (let row = 0; row < 3; row++) {
+    const depth = 40 + row * 20 + Math.random() * 15;
+    const side = Math.random() > 0.5 ? 1 : -1;
+    const x = side * (RIVER_WIDTH / 2 + depth);
+    createTree(x + (Math.random() - 0.5) * 8, z + (Math.random() - 0.5) * 4);
+  }
+}
+
+// ===== AUSTRIAN COUNTRYSIDE HOUSES =====
+function createHouse(x, z, style) {
+  const group = new THREE.Group();
+
+  // Wall colors — Austrian countryside palette
+  const wallColors = [0xFFF8E0, 0xFFE4B5, 0xF5DEB3, 0xFAF0E6, 0xFFDAB9, 0xE8D8C0];
+  const roofColors = [0xCC4433, 0xBB5533, 0x994422, 0xAA3322, 0xDD6644];
+  const wallColor = wallColors[Math.floor(Math.random() * wallColors.length)];
+  const roofColor = roofColors[Math.floor(Math.random() * roofColors.length)];
+
+  const w = 2 + Math.random() * 1.5;
+  const h = 2 + Math.random() * 1.5;
+  const d = 2.5 + Math.random() * 1.5;
+
+  // Walls
+  const walls = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), toonMat(wallColor));
+  walls.position.y = h / 2;
+  walls.castShadow = true;
+  addOutline(walls, 0.02);
+  group.add(walls);
+
+  // Pitched roof
+  const roofGeo = new THREE.ConeGeometry(Math.max(w, d) * 0.65, h * 0.6, 4);
+  const roof = new THREE.Mesh(roofGeo, toonMat(roofColor));
+  roof.position.y = h + h * 0.25;
+  roof.rotation.y = Math.PI / 4;
+  roof.castShadow = true;
+  addOutline(roof, 0.02);
+  group.add(roof);
+
+  // Windows (small dark squares on front)
+  const winMat = toonMat(0x446688);
+  for (let wx = -0.4; wx <= 0.4; wx += 0.8) {
+    const win = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.35, 0.05), winMat);
+    win.position.set(wx, h * 0.55, d / 2 + 0.03);
+    group.add(win);
+  }
+
+  // Door
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.6, 0.05), toonMat(0x6B4226));
+  door.position.set(0, 0.3, d / 2 + 0.03);
+  group.add(door);
+
+  // Optional: chimney
+  if (Math.random() > 0.4) {
+    const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.8, 0.3), toonMat(0x886655));
+    chimney.position.set(w * 0.25, h + h * 0.35, 0);
+    group.add(chimney);
+  }
+
+  group.position.set(x, 0, z);
+  group.rotation.y = Math.random() * Math.PI * 2;
+  scene.add(group);
+  return group;
+}
+
+// Small church/chapel
+function createChapel(x, z) {
+  const group = new THREE.Group();
+
+  // Main building
+  const walls = new THREE.Mesh(new THREE.BoxGeometry(3, 3.5, 4), toonMat(0xFFF8E8));
+  walls.position.y = 1.75; walls.castShadow = true;
+  addOutline(walls, 0.02);
+  group.add(walls);
+
+  // Steep roof
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(2.8, 2, 4), toonMat(0x556655));
+  roof.position.y = 4.5; roof.rotation.y = Math.PI / 4;
+  addOutline(roof, 0.02);
+  group.add(roof);
+
+  // Steeple/tower
+  const tower = new THREE.Mesh(new THREE.BoxGeometry(1, 5, 1), toonMat(0xFFF8E8));
+  tower.position.set(0, 2.5, -2.2); tower.castShadow = true;
+  addOutline(tower, 0.02);
+  group.add(tower);
+
+  // Steeple top (onion dome — Austrian style)
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 8), toonMat(0x448866));
+  dome.position.set(0, 5.3, -2.2); dome.scale.y = 1.4;
+  group.add(dome);
+
+  // Cross on top
+  const cross = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.08), toonMat(0xCCAA44));
+  cross.position.set(0, 6.3, -2.2);
+  group.add(cross);
+  const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 0.08), toonMat(0xCCAA44));
+  crossH.position.set(0, 6.15, -2.2);
+  group.add(crossH);
+
+  group.position.set(x, 0, z);
+  group.rotation.y = Math.random() * Math.PI * 2;
+  scene.add(group);
+  return group;
+}
+
+// Scatter houses along both banks (further back from river)
+for (let z = 30; z < 1400; z += 30 + Math.random() * 50) {
+  for (const side of [-1, 1]) {
+    const dist = RIVER_WIDTH / 2 + 50 + Math.random() * 80;
+    createHouse(side * dist, z);
+    // Sometimes add a second house nearby (small cluster)
+    if (Math.random() > 0.5) {
+      createHouse(side * (dist + 5 + Math.random() * 8), z + (Math.random() - 0.5) * 10);
+    }
+  }
+}
+
+// A few chapels scattered along the route
+const chapelPositions = [
+  [-90, 150], [100, 400], [-110, 700], [95, 1000], [-85, 1300]
+];
+chapelPositions.forEach(([x, z]) => createChapel(x, z));
+
+// ===== CROWD ON THE BANKS =====
+function createCrowdFigure(x, y, z) {
+  const group = new THREE.Group();
+  const shirtColors = [0xFF6644, 0x44AAFF, 0xFFDD22, 0x66DD66, 0xFF44AA, 0xAA44FF];
+  const shirtColor = shirtColors[Math.floor(Math.random() * shirtColors.length)];
+  // Body
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 0.2), toonMat(shirtColor));
+  body.position.y = 0.5;
+  group.add(body);
+  // Head
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 6), toonMat(0xFFCC88));
+  head.position.y = 0.9;
+  group.add(head);
+  group.position.set(x, y, z);
+  scene.add(group);
+  return group;
+}
+
+// Crowd clusters near the ramp on both banks
+for (let z = -10; z < 40; z += 1.2 + Math.random() * 0.8) {
+  for (let row = 0; row < 3; row++) {
+    const xOffL = -(RIVER_WIDTH / 2 + 2 + row * 1.2) + (Math.random() - 0.5) * 0.5;
+    const xOffR = (RIVER_WIDTH / 2 + 2 + row * 1.2) + (Math.random() - 0.5) * 0.5;
+    createCrowdFigure(xOffL, 1.0, z);
+    createCrowdFigure(xOffR, 1.0, z);
+  }
+}
+// Sparse crowd further downstream
+for (let z = 40; z < 200; z += 4 + Math.random() * 6) {
+  const side = Math.random() > 0.5 ? 1 : -1;
+  const xOff = side * (RIVER_WIDTH / 2 + 2 + Math.random() * 3);
+  createCrowdFigure(xOff, 1.0, z);
+}
+
+// ===== FOG =====
+// Fog disabled — transparent sky with CSS background
+// scene.fog = new THREE.Fog(0x87CEEB, 150, 900);
+
+// ===== BRIDGE / LAUNCH PLATFORM =====
 const rampGroup = new THREE.Group();
 scene.add(rampGroup);
 
-// Platform deck
-const deckGeo = new THREE.BoxGeometry(6, 0.5, 8);
+// Bridge deck (spans across the river)
+const bridgeGeo = new THREE.BoxGeometry(RIVER_WIDTH + 10, 0.6, 5);
+const bridgeMesh = new THREE.Mesh(bridgeGeo, toonMat(0x888899));
+bridgeMesh.position.set(0, RAMP_HEIGHT - 0.3, -4);
+bridgeMesh.castShadow = true;
+bridgeMesh.receiveShadow = true;
+addOutline(bridgeMesh, 0.015);
+rampGroup.add(bridgeMesh);
+
+// Bridge railings
+const railMat = toonMat(0x777788);
+for (let side = -1; side <= 1; side += 2) {
+  const railX = side * (RIVER_WIDTH / 2 + 4);
+  // Railing posts
+  for (let z = -6; z <= -2; z += 2) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.5, 6), railMat);
+    post.position.set(railX, RAMP_HEIGHT + 0.5, z);
+    rampGroup.add(post);
+  }
+  // Top rail
+  const topRail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 6), railMat);
+  topRail.position.set(railX, RAMP_HEIGHT + 1.2, -4);
+  rampGroup.add(topRail);
+}
+
+// Bridge support pillars in the water
+for (let x = -12; x <= 12; x += 8) {
+  const pillar = new THREE.Mesh(new THREE.BoxGeometry(1.2, RAMP_HEIGHT + 2, 1.2), toonMat(0x777788));
+  pillar.position.set(x, RAMP_HEIGHT / 2 - 1, -4);
+  pillar.castShadow = true;
+  addOutline(pillar, 0.015);
+  rampGroup.add(pillar);
+}
+
+// Launch platform (extends from bridge over the water)
+const deckGeo = new THREE.BoxGeometry(6, 0.5, 10);
 const deckMesh = new THREE.Mesh(deckGeo, toonMat(0xB88855));
-deckMesh.position.set(0, RAMP_HEIGHT - 0.25, -2);
+deckMesh.position.set(0, RAMP_HEIGHT - 0.25, 1);
 deckMesh.castShadow = true;
 deckMesh.receiveShadow = true;
 addOutline(deckMesh, 0.02);
 rampGroup.add(deckMesh);
 
-// Ramp surface (angled)
+// Ramp surface (angled, red)
 const rampGeo = new THREE.BoxGeometry(5, 0.3, RAMP_LENGTH);
 const rampMesh = new THREE.Mesh(rampGeo, toonMat(0xCC4444));
 rampMesh.position.set(0, RAMP_HEIGHT + RAMP_LENGTH / 2 * Math.sin(RAMP_ANGLE) * 0.5, 2 + RAMP_LENGTH / 2 * Math.cos(RAMP_ANGLE) * 0.5);
@@ -519,9 +967,9 @@ rampMesh.castShadow = true;
 addOutline(rampMesh, 0.02);
 rampGroup.add(rampMesh);
 
-// Support columns
+// Platform support columns under launch deck
 for (let x = -2; x <= 2; x += 4) {
-  for (let z = -4; z <= 2; z += 3) {
+  for (let z = -2; z <= 4; z += 3) {
     const col = new THREE.Mesh(new THREE.BoxGeometry(0.5, RAMP_HEIGHT, 0.5), toonMat(0x8A6633));
     col.position.set(x, RAMP_HEIGHT / 2, z);
     col.castShadow = true;
@@ -530,11 +978,12 @@ for (let x = -2; x <= 2; x += 4) {
   }
 }
 
+
 // Slingshot posts
 const postGeo = new THREE.CylinderGeometry(0.15, 0.15, 3, 8);
 const postMat = toonMat(0x888899);
 const postL = new THREE.Mesh(postGeo, postMat);
-postL.position.set(-1.5, RAMP_HEIGHT + 1.5, 6);
+postL.position.set(-1.5, RAMP_HEIGHT + 1.5, 1);
 addOutline(postL, 0.02);
 rampGroup.add(postL);
 const postR = postL.clone();
@@ -551,32 +1000,8 @@ for (let i = 0; i < 3; i++) {
   rampGroup.add(stripe);
 }
 
-// ===== CLOUDS =====
-function createCloud(x, y, z, scale) {
-  const group = new THREE.Group();
-  const mat = toonMat(0xF0F4FF);
-  const positions = [
-    [0, 0, 0, 1], [-0.6, 0.1, 0.2, 0.7], [0.5, 0.15, -0.1, 0.8],
-    [0.1, 0.3, 0, 0.6], [-0.3, -0.1, 0.3, 0.65],
-  ];
-  positions.forEach(([px, py, pz, s]) => {
-    const sphere = new THREE.Mesh(new THREE.SphereGeometry(s, 8, 8), mat);
-    sphere.position.set(px, py, pz);
-    group.add(sphere);
-  });
-  group.position.set(x, y, z);
-  group.scale.setScalar(scale);
-  scene.add(group);
-  return group;
-}
 
-const clouds = [];
-const cloudPositions = [
-  [-40, 45, 100, 5], [30, 55, 200, 6], [-60, 50, 350, 4],
-  [50, 60, 500, 7], [-30, 40, 650, 5], [70, 55, 800, 6],
-  [-50, 65, 1000, 4], [40, 50, 1200, 5],
-];
-cloudPositions.forEach(([x, y, z, s]) => clouds.push(createCloud(x, y, z, s)));
+// ===== CLOUDS (removed — background image has clouds) =====
 
 // ===== DISTANCE BUOYS =====
 const buoys = [];
@@ -600,56 +1025,65 @@ function createBuoy(dist) {
 }
 for (let i = 1; i <= BUOY_COUNT; i++) createBuoy(i * BUOY_SPACING);
 
-// ===== PROCEDURAL CRAFT =====
+// ===== CRAFT (complete GLB skins) =====
 const craftGroup = new THREE.Group();
 scene.add(craftGroup);
+const CRAFT_TARGET_LENGTH = 2.8;
 
-// Fuselage
-const fuselageGeo = new THREE.BoxGeometry(0.8, 0.5, 2.0);
-const fuselage = new THREE.Mesh(fuselageGeo, toonMat(0xFF4444, true));
-fuselage.castShadow = true;
-addOutline(fuselage, 0.04);
-craftGroup.add(fuselage);
+// Placeholder (shown while GLB loads)
+const placeholderFuselage = new THREE.Mesh(
+  new THREE.BoxGeometry(0.8, 0.5, 2.0), toonMat(0xFF4444, true)
+);
+placeholderFuselage.castShadow = true;
+addOutline(placeholderFuselage, 0.04);
+craftGroup.add(placeholderFuselage);
 
-// Wings
-const wingGeo = new THREE.BoxGeometry(4.5, 0.06, 0.9);
-const wings = new THREE.Mesh(wingGeo, toonMat(0xFFFFFF, true));
-wings.position.y = 0.1;
-wings.castShadow = true;
-addOutline(wings, 0.03);
-craftGroup.add(wings);
+let currentGLBModel = null;
+let isLoadingCraft = false;
 
-// Nose cone
-const noseGeo = new THREE.ConeGeometry(0.25, 0.7, 8);
-const nose = new THREE.Mesh(noseGeo, toonMat(0xFFD700, true));
-nose.rotation.x = -Math.PI / 2;
-nose.position.z = 1.35;
-addOutline(nose, 0.04);
-craftGroup.add(nose);
+function buildCraft() {
+  const craft = CRAFTS[currentCraftIdx];
+  if (currentSkinIdx >= craft.skins.length) currentSkinIdx = 0;
+  const skin = craft.skins[currentSkinIdx];
 
-// Tail fin
-const tailGeo = new THREE.BoxGeometry(0.06, 0.5, 0.4);
-const tail = new THREE.Mesh(tailGeo, toonMat(0xFF3344, true));
-tail.position.set(0, 0.35, -0.9);
-addOutline(tail, 0.03);
-craftGroup.add(tail);
+  if (currentGLBModel) { craftGroup.remove(currentGLBModel); currentGLBModel = null; }
+  placeholderFuselage.visible = true;
+  isLoadingCraft = true;
 
-// Horizontal tail
-const hTailGeo = new THREE.BoxGeometry(1.2, 0.04, 0.3);
-const hTail = new THREE.Mesh(hTailGeo, toonMat(0xFFFFFF, true));
-hTail.position.set(0, 0.15, -0.9);
-craftGroup.add(hTail);
+  loadGLB(skin.file).then((model) => {
+    toonifyModel(model);
+    scene.add(model);
 
-// Propeller
-const propGroup = new THREE.Group();
-const bladeMat = toonMat(0x888888);
-const bladeGeo = new THREE.BoxGeometry(0.08, 0.8, 0.06);
-const blade1 = new THREE.Mesh(bladeGeo, bladeMat);
-const blade2 = new THREE.Mesh(bladeGeo, bladeMat);
-blade2.rotation.z = Math.PI / 2;
-propGroup.add(blade1, blade2);
-propGroup.position.z = 1.7;
-craftGroup.add(propGroup);
+    // Apply per-skin rotation
+    model.rotation.y = skin.rotY || 0;
+
+    let box = new THREE.Box3().setFromObject(model);
+    let size = box.getSize(new THREE.Vector3());
+
+    // Scale by the longest horizontal axis (these crafts have wings wider than long)
+    const longest = Math.max(size.x, size.z);
+    const s = CRAFT_TARGET_LENGTH / Math.max(longest, 0.01);
+    model.scale.multiplyScalar(s);
+
+    box.setFromObject(model);
+    const center = box.getCenter(new THREE.Vector3());
+    model.position.x -= center.x;
+    model.position.z -= center.z;
+    model.position.y -= box.min.y;
+
+    scene.remove(model);
+    placeholderFuselage.visible = false;
+    currentGLBModel = model;
+    craftGroup.add(model);
+    isLoadingCraft = false;
+    console.log('Craft loaded:', craft.name, skin.name);
+  }).catch((err) => {
+    console.error('GLB load failed:', skin.file, err);
+    placeholderFuselage.visible = true;
+    isLoadingCraft = false;
+  });
+}
+
 
 // ===== SLINGSHOT BANDS =====
 const bandMat = new THREE.MeshBasicMaterial({ color: 0xCC6600 });
@@ -664,8 +1098,8 @@ function updateBands(craftPos, show) {
   bandL.visible = show;
   bandR.visible = show;
   if (!show) return;
-  const lPost = new THREE.Vector3(-1.5, RAMP_HEIGHT + 3, 6);
-  const rPost = new THREE.Vector3(1.5, RAMP_HEIGHT + 3, 6);
+  const lPost = new THREE.Vector3(-1.5, RAMP_HEIGHT + 3, 1);
+  const rPost = new THREE.Vector3(1.5, RAMP_HEIGHT + 3, 1);
   [bandL, bandR].forEach((band, i) => {
     const post = i === 0 ? lPost : rPost;
     const mid = new THREE.Vector3().addVectors(post, craftPos).multiplyScalar(0.5);
@@ -820,10 +1254,10 @@ let camTarget = new THREE.Vector3(0, RAMP_HEIGHT + 5, -10);
 let camLookTarget = new THREE.Vector3(0, RAMP_HEIGHT, 5);
 let camLerp = 0.05;
 
-const CRAFT_REST_POS = new THREE.Vector3(0, RAMP_HEIGHT + 0.5, 4);
+const CRAFT_REST_POS = new THREE.Vector3(0, RAMP_HEIGHT + 0.5, -1);
 
 // ===== SCREEN MANAGEMENT =====
-const screens = ['screen-title', 'screen-aim-hud', 'screen-flight-hud', 'screen-splash', 'screen-results'];
+const screens = ['screen-title', 'screen-garage', 'screen-aim-hud', 'screen-flight-hud', 'screen-splash', 'screen-results'];
 function showScreen(id) {
   screens.forEach(s => document.getElementById(s).classList.remove('active'));
   if (id) document.getElementById(id).classList.add('active');
@@ -857,6 +1291,19 @@ function setState(state) {
       }
       break;
 
+    case 'GARAGE':
+      showScreen('screen-garage');
+      craftGroup.position.copy(CRAFT_REST_POS);
+      craftGroup.rotation.set(0, 0, 0);
+      updateBands(craftGroup.position, false);
+      updateTrajectoryPreview(null, null, false);
+      // Camera: framing the craft on the deck
+      camTarget.set(4, RAMP_HEIGHT + 3, -8);
+      camLookTarget.set(0, RAMP_HEIGHT + 0.5, -1);
+      camLerp = 0.06;
+      renderGarage();
+      break;
+
     case 'READY':
       showScreen('screen-aim-hud');
       document.getElementById('aim-text').textContent = 'TAP TO FLY';
@@ -866,8 +1313,8 @@ function setState(state) {
       craftGroup.rotation.set(0, 0, 0);
       updateBands(craftGroup.position, false);
       updateTrajectoryPreview(null, null, false);
-      camTarget.set(0, RAMP_HEIGHT + 5, -10);
-      camLookTarget.set(0, RAMP_HEIGHT + 2, 8);
+      camTarget.set(0, RAMP_HEIGHT + 4, -8);
+      camLookTarget.set(0, RAMP_HEIGHT + 1, 2);
       camLerp = 0.05;
       isDragging = false;
       aimPower = 0;
@@ -950,6 +1397,34 @@ function setState(state) {
       break;
     }
 
+  }
+}
+
+// ===== GARAGE RENDERING =====
+function renderGarage() {
+  document.getElementById('garage-coins').textContent = '\u{1FA99} ' + save.coins;
+
+  // Craft name + dots
+  const craft = CRAFTS[currentCraftIdx];
+  document.getElementById('craft-name').textContent = craft.name;
+  renderDots('craft-dots', CRAFTS.length, currentCraftIdx);
+
+  // Skin name + dots
+  const skin = craft.skins[currentSkinIdx];
+  document.getElementById('skin-name').textContent = skin.name;
+  renderDots('skin-dots', craft.skins.length, currentSkinIdx);
+
+  // Hide skin row if only 1 skin
+  document.getElementById('skin-row').style.display = craft.skins.length > 1 ? '' : 'none';
+}
+
+function renderDots(containerId, count, activeIdx) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'garage-dot' + (i === activeIdx ? ' active' : '');
+    el.appendChild(dot);
   }
 }
 
@@ -1110,8 +1585,41 @@ document.addEventListener('keyup', (e) => {
 });
 
 // ===== BUTTON HANDLERS =====
-document.getElementById('btn-play').addEventListener('click', () => setState('READY'));
+document.getElementById('btn-play').addEventListener('click', () => setState('GARAGE'));
 document.getElementById('btn-fly-again').addEventListener('click', () => setState('READY'));
+document.getElementById('btn-garage').addEventListener('click', () => setState('GARAGE'));
+document.getElementById('btn-garage-fly').addEventListener('click', () => setState('READY'));
+
+// Craft arrows
+document.getElementById('craft-prev').addEventListener('click', (e) => {
+  e.stopPropagation();
+  currentCraftIdx = (currentCraftIdx - 1 + CRAFTS.length) % CRAFTS.length;
+  currentSkinIdx = 0;
+  save.craftIdx = currentCraftIdx; save.skinIdx = 0; writeSave();
+  buildCraft(); renderGarage(); craftGroup.rotation.y = 0;
+});
+document.getElementById('craft-next').addEventListener('click', (e) => {
+  e.stopPropagation();
+  currentCraftIdx = (currentCraftIdx + 1) % CRAFTS.length;
+  currentSkinIdx = 0;
+  save.craftIdx = currentCraftIdx; save.skinIdx = 0; writeSave();
+  buildCraft(); renderGarage(); craftGroup.rotation.y = 0;
+});
+// Skin arrows
+document.getElementById('skin-prev').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const skins = CRAFTS[currentCraftIdx].skins;
+  currentSkinIdx = (currentSkinIdx - 1 + skins.length) % skins.length;
+  save.skinIdx = currentSkinIdx; writeSave();
+  buildCraft(); renderGarage(); craftGroup.rotation.y = 0;
+});
+document.getElementById('skin-next').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const skins = CRAFTS[currentCraftIdx].skins;
+  currentSkinIdx = (currentSkinIdx + 1) % skins.length;
+  save.skinIdx = currentSkinIdx; writeSave();
+  buildCraft(); renderGarage(); craftGroup.rotation.y = 0;
+});
 
 // ===== FLIGHT PHYSICS UPDATE =====
 function updateFlightPhysics(dt) {
@@ -1193,6 +1701,13 @@ function updateFlightPhysics(dt) {
   const curSpeed = Math.sqrt(vel.y * vel.y + vel.z * vel.z);
   if (curSpeed > maxSpeed) maxSpeed = curSpeed;
 
+  // Altitude ceiling — keep the game visually grounded
+  const MAX_ALTITUDE = 50;
+  if (pos.y > MAX_ALTITUDE) {
+    pos.y = MAX_ALTITUDE;
+    if (vel.y > 0) vel.y *= 0.5; // dampen upward velocity
+  }
+
   // Splash check
   if (pos.y <= 0) {
     triggerSplashFromFlight();
@@ -1203,8 +1718,6 @@ function updateFlightPhysics(dt) {
   craftGroup.position.set(pos.x, pos.y, pos.z);
   craftGroup.rotation.x = -pitch;
 
-  // Propeller spin
-  propGroup.rotation.z += dt * (10 + curSpeed * 0.5);
 
   // Wind trail
   trailTimer += dt;
@@ -1265,7 +1778,10 @@ function updateCamera(dt) {
 function updateIdleCraft(time) {
   if (gameState === 'TITLE' || gameState === 'READY') {
     craftGroup.position.y = CRAFT_REST_POS.y + Math.sin(time * 1.5) * 0.05;
-    propGroup.rotation.z += 0.02;
+  }
+  if (gameState === 'GARAGE') {
+    craftGroup.rotation.y += 0.008;
+    craftGroup.position.y = CRAFT_REST_POS.y + Math.sin(time * 1.2) * 0.06;
   }
 }
 
@@ -1282,6 +1798,7 @@ function gameLoop(timestamp) {
 
   switch (gameState) {
     case 'TITLE':
+    case 'GARAGE':
     case 'READY':
       updateIdleCraft(time);
       break;
@@ -1316,6 +1833,9 @@ function gameLoop(timestamp) {
 
 // ===== INIT =====
 loadSave();
+currentCraftIdx = save.craftIdx || 0;
+currentSkinIdx = save.skinIdx || 0;
+buildCraft();
 camera.position.set(0, RAMP_HEIGHT + 5, -10);
 camera.userData.lookAt = new THREE.Vector3(0, RAMP_HEIGHT, 5);
 camera.lookAt(0, RAMP_HEIGHT, 5);
