@@ -4,57 +4,35 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Flugtag - Epic Flying Machine</title>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Fredoka:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Boogaloo&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
 <style>
-/* Brand fonts from design system */
-@font-face { font-family: 'Slingshot Logo'; src: url('fonts/logo_font.ttf') format('truetype'); font-weight: 400 900; font-display: swap; }
-@font-face { font-family: 'Slingshot Body'; src: url('fonts/body_font.ttf') format('truetype'); font-weight: 400 800; font-display: swap; }
-@font-face { font-family: 'Slingshot Flavor'; src: url('fonts/flavor_fonts.ttf') format('truetype'); font-weight: 400 800; font-display: swap; }
-@font-face { font-family: 'Slingshot Numerals'; src: url('fonts/racing_numerals_fonts.ttf') format('truetype'); font-weight: 400 900; font-display: swap; }
-
 :root {
-  /* ===== Sled Surfers Design System ===== */
-  --font-display: 'Slingshot Logo', 'Baloo 2', system-ui, sans-serif;
-  --font-ui: 'Slingshot Body', 'Fredoka', system-ui, sans-serif;
-  --font-flavor: 'Slingshot Flavor', 'Slingshot Logo', system-ui, sans-serif;
-  --font-numeric: 'Slingshot Numerals', 'Slingshot Body', system-ui, sans-serif;
-  --font-body: var(--font-ui);
-
-  /* Core palette */
-  --ss-navy: #163A5F;
-  --ss-sky-pale: #E8F4FD;
-  --ss-snow-white: #FFFFFF;
-  --ss-blue-50: #E3F2FB;
-  --ss-blue-300: #6BC0EF;
-  --ss-blue-500: #3BA4E8;
-  --ss-blue-700: #1565A3;
-  --ss-green-300: #A6E47A;
-  --ss-green-500: #63C93B;
-  --ss-green-700: #3E8D1F;
-  --ss-red-500: #EE3B3B;
-  --ss-red-700: #A51616;
-  --ss-yellow-500: #FFC41F;
-  --ss-yellow-700: #C08A00;
-  --ss-orange-500: #FF8A1F;
-  --ss-orange-700: #B5510A;
-  --ss-ink-100: #D8E2EC;
-  --ss-ink-500: #5A7691;
-
-  /* Legacy aliases */
-  --sky-blue: var(--ss-blue-500);
+  --font-display: 'Boogaloo', 'Arial Black', sans-serif;
+  --font-body: 'Nunito', 'Arial Black', sans-serif;
+  --font-mono: 'Courier New', monospace;
+  --sky-blue: #4A90D9;
   --ocean: #0088AA;
-  --red: var(--ss-red-500);
-  --yellow: var(--ss-yellow-500);
-  --green: var(--ss-green-500);
+  --red: #FF3344;
+  --yellow: #FFD700;
+  --green: #44DD66;
   --white: #FFFFFF;
-  --dark: var(--ss-navy);
-
-  /* Shadows & radii */
-  --text-shadow: 2px 2px 0 var(--ss-navy);
-  --text-shadow-heavy: 1px 1px 0 var(--ss-navy), 0 3px 0 rgba(12,40,70,.35);
-  --btn-radius: 20px;
+  --dark: #1A3A5C;
+  --text-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+  --text-shadow-heavy: 4px 4px 0 rgba(0,0,0,0.7);
+  --btn-radius: 16px;
+  /* Sled Surfers tokens */
+  --ss-navy:       #163A5F;
+  --ss-ink-100:    #D8E2EC;
+  --ss-sky-pale:   #E8F4FD;
+  --ss-blue-300:   #6BC0EF;
+  --ss-blue-500:   #3BA4E8;
+  --ss-blue-700:   #1D7DB8;
+  --ss-green-500:  #63C93B;
+  --ss-green-700:  #3F9A20;
+  --ss-red-500:    #EE3B3B;
+  --ss-yellow-500: #FFC41F;
+  --r-lg: 20px;
   --r-xl: 28px;
-  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
@@ -77,95 +55,55 @@ canvas { display: block; width: 100%; height: 100%; }
 .screen.active { opacity: 1; pointer-events: auto; }
 .screen.passthrough { pointer-events: none !important; }
 .screen.passthrough .game-btn { pointer-events: auto; }
-/* ===== Design System Button (Sled Surfers) ===== */
 .game-btn {
-  position: relative;
   font-family: var(--font-display);
-  font-size: 22px; font-weight: 800;
-  color: white;
-  -webkit-text-stroke: 1px var(--ss-navy);
-  text-shadow: 1px 1px 0 var(--ss-navy), 0 2px 0 rgba(12,40,70,.35);
-  background: var(--ss-green-500);
-  border: 3px solid var(--ss-navy);
+  font-size: 24px; color: white;
+  text-shadow: var(--text-shadow);
+  background: var(--red);
+  border: 4px solid rgba(0,0,0,0.3);
   border-radius: var(--btn-radius);
-  padding: 14px 32px;
-  min-height: 52px;
-  cursor: pointer;
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
-  box-shadow: 0 6px 0 0 var(--ss-green-700), 0 8px 0 0 var(--ss-navy);
-  text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 14px 36px; cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+  box-shadow: 0 6px 0 rgba(0,0,0,0.3);
+  text-transform: uppercase; letter-spacing: 2px;
   -webkit-tap-highlight-color: transparent;
   user-select: none; outline: none;
-  overflow: hidden;
 }
-.game-btn::before {
-  content: ""; position: absolute;
-  inset: 3px 3px 50% 3px;
-  border-radius: calc(var(--btn-radius) - 5px) calc(var(--btn-radius) - 5px) 50% 50%;
-  background: linear-gradient(180deg, rgba(255,255,255,.45), rgba(255,255,255,0));
-  pointer-events: none;
-}
-.game-btn:hover { transform: translateY(-2px); }
-.game-btn:active {
-  transform: translateY(4px);
-  box-shadow: 0 2px 0 0 var(--ss-green-700), 0 4px 0 0 var(--ss-navy);
-}
-.game-btn.secondary {
-  background: var(--ss-blue-500);
-  box-shadow: 0 6px 0 0 var(--ss-blue-700), 0 8px 0 0 var(--ss-navy);
-}
-.game-btn.secondary:active {
-  box-shadow: 0 2px 0 0 var(--ss-blue-700), 0 4px 0 0 var(--ss-navy);
-}
-.game-btn.green { background: var(--ss-green-500); }
+.game-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 0 rgba(0,0,0,0.3); }
+.game-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,0.3); }
+.game-btn.secondary { background: var(--sky-blue); }
+.game-btn.green { background: var(--green); }
 .game-btn.pulse { animation: btnPulse 1.5s ease-in-out infinite; }
 @keyframes btnPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
 
 /* Title Screen */
 #screen-title { background: rgba(0,0,0,0.3); }
 .title-text {
-  font-family: var(--font-flavor); font-size: 84px;
-  color: #FFFFFF;
-  -webkit-text-stroke: 2px var(--ss-navy);
-  text-shadow:
-    3px 3px 0 var(--ss-navy),
-    -1px -1px 0 var(--ss-navy),
-    1px -1px 0 var(--ss-navy),
-    -1px 1px 0 var(--ss-navy),
-    0 6px 0 rgba(12,40,70,.35);
-  text-transform: uppercase; line-height: 1.05; text-align: center;
-  letter-spacing: 0.02em;
+  font-family: var(--font-display); font-size: 72px;
+  color: var(--yellow); text-shadow: var(--text-shadow-heavy);
+  text-transform: uppercase; line-height: 1.1; text-align: center;
 }
 .title-sub {
-  font-family: var(--font-ui); font-size: 18px; font-weight: 700;
-  color: #FFFFFF;
-  text-shadow: 1px 1px 0 var(--ss-navy), 0 2px 0 rgba(12,40,70,.35);
-  margin: 12px 0 32px; text-align: center; letter-spacing: 0.02em;
+  font-family: var(--font-body); font-size: 20px;
+  color: rgba(255,255,255,0.8); text-shadow: var(--text-shadow);
+  margin: 8px 0 30px; text-align: center;
 }
 .best-distance {
-  font-family: var(--font-numeric); font-size: 16px; font-weight: 800;
-  color: #FFFFFF;
-  -webkit-text-stroke: 0.5px var(--ss-navy);
-  text-shadow: 1px 1px 0 var(--ss-navy);
-  margin-top: 20px;
+  font-family: var(--font-display); font-size: 18px;
+  color: rgba(255,255,255,0.6); margin-top: 16px;
 }
 
 /* Aim HUD */
 #screen-aim-hud { justify-content: flex-end; padding-bottom: 60px; }
 .aim-instruction {
-  font-family: var(--font-flavor); font-size: 32px;
-  color: #FFFFFF;
-  -webkit-text-stroke: 1px var(--ss-navy);
-  text-shadow: 2px 2px 0 var(--ss-navy), 0 4px 0 rgba(12,40,70,.35);
-  text-transform: uppercase; letter-spacing: 0.04em;
+  font-family: var(--font-display); font-size: 28px;
+  color: white; text-shadow: var(--text-shadow);
   animation: aimBounce 1s ease-in-out infinite;
 }
 @keyframes aimBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
 .power-display {
-  font-family: var(--font-numeric); font-size: 22px; font-weight: 800;
-  color: #FFFFFF;
-  -webkit-text-stroke: 0.5px var(--ss-navy);
-  text-shadow: 1px 1px 0 var(--ss-navy);
+  font-family: var(--font-display); font-size: 22px;
+  color: var(--yellow); text-shadow: var(--text-shadow);
   margin-top: 10px;
 }
 
@@ -176,42 +114,20 @@ canvas { display: block; width: 100%; height: 100%; }
   display: flex; justify-content: space-between; align-items: flex-start;
 }
 .hud-distance {
-  font-family: var(--font-numeric); font-size: 40px; font-weight: 900;
-  color: #FFFFFF;
-  -webkit-text-stroke: 1.5px var(--ss-navy);
-  text-shadow: 2px 2px 0 var(--ss-navy), 0 4px 0 rgba(12,40,70,.4);
+  font-family: var(--font-display); font-size: 36px;
+  color: white; text-shadow: var(--text-shadow-heavy);
 }
-.hud-altitude, .hud-speed {
-  font-family: var(--font-numeric); font-size: 15px; font-weight: 800;
-  color: #FFFFFF;
-  -webkit-text-stroke: 0.5px var(--ss-navy);
-  text-shadow: 1px 1px 0 var(--ss-navy);
-  letter-spacing: 0.02em;
-}
-.hud-coins {
-  display: inline-flex; align-items: center; gap: 6px;
-  height: 36px; padding: 0 14px 0 10px;
-  background: #fff; border: 3px solid var(--ss-navy);
-  border-radius: 999px;
-  box-shadow: 0 3px 0 0 rgba(12,40,70,.2);
-  font-family: var(--font-numeric);
-  font-weight: 800; font-size: 16px;
-  color: var(--ss-navy);
+.hud-altitude, .hud-speed, .hud-coins {
+  font-family: var(--font-body); font-size: 16px; font-weight: 800;
+  color: white; text-shadow: var(--text-shadow);
 }
 .hud-boost-bar {
-  width: 120px; height: 14px;
-  background: var(--ss-ink-100);
-  border: 2px solid var(--ss-navy);
-  border-radius: 999px;
-  overflow: hidden; margin-top: 6px;
-  box-shadow: inset 0 2px 0 rgba(12,40,70,.18);
+  width: 120px; height: 10px; background: rgba(0,0,0,0.3);
+  border-radius: 5px; overflow: hidden; margin-top: 4px;
 }
 .hud-boost-fill {
-  height: 100%;
-  background: linear-gradient(180deg, var(--ss-yellow-500), var(--ss-orange-500));
-  border-radius: 999px;
-  box-shadow: inset 0 2px 0 rgba(255,255,255,.4);
-  transition: width 0.1s;
+  height: 100%; background: var(--yellow);
+  border-radius: 5px; transition: width 0.1s;
 }
 .hud-bottom {
   position: absolute; bottom: 16px; left: 16px; right: 16px;
@@ -221,192 +137,115 @@ canvas { display: block; width: 100%; height: 100%; }
 /* Splash Screen */
 #screen-splash { background: rgba(0,80,120,0.4); }
 .splash-text {
-  font-family: var(--font-flavor); font-size: 88px; font-weight: 900;
-  color: #FFFFFF;
-  -webkit-text-stroke: 2px var(--ss-navy);
-  text-shadow:
-    3px 3px 0 var(--ss-navy),
-    -1px -1px 0 var(--ss-navy),
-    1px -1px 0 var(--ss-navy),
-    -1px 1px 0 var(--ss-navy),
-    0 8px 0 rgba(12,40,70,.4);
-  text-transform: uppercase; letter-spacing: 0.04em;
-  animation: splashPop 0.5s var(--ease-pop);
+  font-family: var(--font-display); font-size: 80px;
+  color: var(--white); text-shadow: var(--text-shadow-heavy);
+  animation: splashPop 0.5s cubic-bezier(0.34,1.56,0.64,1);
 }
 @keyframes splashPop { 0%{transform:scale(0);opacity:0} 100%{transform:scale(1);opacity:1} }
 
 /* Results Screen */
 #screen-results { background: rgba(0,0,0,0.5); }
 .results-card {
-  background: linear-gradient(180deg, #F0F7FC 0%, #D5EAFA 100%);
-  border: 3px solid var(--ss-navy);
-  border-radius: var(--r-xl);
-  box-shadow: 0 8px 0 rgba(12,40,70,.25), 0 12px 24px rgba(12,40,70,.2);
-  padding: 32px 24px 24px;
+  background: linear-gradient(135deg, rgba(26,58,92,0.95), rgba(42,111,168,0.95));
+  border: 4px solid rgba(255,255,255,0.2);
+  border-radius: 24px; padding: 32px 40px;
   text-align: center; max-width: 380px; width: 90%;
-  position: relative;
 }
 .results-title {
-  position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
-  display: inline-flex; align-items: center; justify-content: center;
-  padding: 8px 28px;
-  background: var(--ss-orange-500);
-  border: 3px solid var(--ss-navy);
-  border-radius: 12px;
-  box-shadow: 0 4px 0 rgba(12,40,70,.25);
-  font-family: var(--font-flavor); font-size: 22px; font-weight: 800;
-  color: #FFFFFF;
-  -webkit-text-stroke: 1px var(--ss-navy);
-  text-shadow: 1px 1px 0 var(--ss-navy);
-  text-transform: uppercase; letter-spacing: 0.04em;
-  white-space: nowrap;
-  margin-bottom: 0;
+  font-family: var(--font-display); font-size: 36px;
+  color: var(--yellow); text-shadow: var(--text-shadow);
+  margin-bottom: 20px;
 }
 .results-row {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 10px 4px; border-bottom: 2px solid rgba(12,40,70,0.1);
+  display: flex; justify-content: space-between;
+  padding: 8px 0; border-bottom: 2px solid rgba(255,255,255,0.1);
 }
 .results-label {
-  font-family: var(--font-ui); font-size: 15px; font-weight: 700;
-  color: var(--ss-ink-500);
-  text-transform: uppercase; letter-spacing: 0.02em;
+  font-family: var(--font-body); font-size: 16px; font-weight: 800;
+  color: rgba(255,255,255,0.7);
 }
 .results-value {
-  font-family: var(--font-numeric); font-size: 22px; font-weight: 800;
-  color: var(--ss-navy);
+  font-family: var(--font-display); font-size: 22px;
+  color: white; text-shadow: var(--text-shadow);
 }
 .results-coins {
-  font-family: var(--font-flavor); font-size: 30px; font-weight: 900;
-  color: var(--ss-orange-500);
-  -webkit-text-stroke: 1px var(--ss-navy);
-  text-shadow: 1px 1px 0 var(--ss-navy);
-  margin: 18px 0;
-  text-transform: uppercase; letter-spacing: 0.03em;
+  font-family: var(--font-display); font-size: 28px;
+  color: var(--yellow); text-shadow: var(--text-shadow);
+  margin: 16px 0;
 }
-.results-buttons { display: flex; gap: 12px; margin-top: 16px; justify-content: center; }
+.results-buttons { display: flex; gap: 12px; margin-top: 20px; justify-content: center; }
 .results-best {
-  font-family: var(--font-numeric); font-size: 13px; font-weight: 800;
-  color: var(--ss-ink-500);
-  margin-top: 10px;
-  letter-spacing: 0.04em;
+  font-family: var(--font-body); font-size: 14px; font-weight: 800;
+  color: rgba(255,255,255,0.5); margin-top: 12px;
 }
 .new-record {
-  font-family: var(--font-flavor); font-size: 20px; font-weight: 900;
-  color: var(--ss-orange-500);
-  -webkit-text-stroke: 0.5px var(--ss-navy);
-  text-shadow: 1px 1px 0 var(--ss-navy);
-  text-transform: uppercase;
-  animation: recordPulse 0.8s ease-in-out infinite;
+  font-family: var(--font-display); font-size: 18px;
+  color: var(--yellow); animation: recordPulse 0.8s ease-in-out infinite;
 }
 @keyframes recordPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.7;transform:scale(1.1)} }
 
 /* Upgrade Cards (bottom of aim screen, Flight Master style) */
 .aim-coins {
   position: absolute; top: 14px; left: 16px;
-  display: inline-flex; align-items: center;
-  height: 40px; padding: 0 16px 0 12px;
-  background: #fff; border: 3px solid var(--ss-navy);
-  border-radius: 999px;
-  box-shadow: 0 3px 0 0 rgba(12,40,70,.2);
-  font-family: var(--font-numeric); font-weight: 800; font-size: 18px;
-  color: var(--ss-navy);
+  font-family: var(--font-display); font-size: 22px;
+  color: var(--yellow); text-shadow: var(--text-shadow);
 }
 .aim-best {
   position: absolute; top: 14px; right: 16px;
-  font-family: var(--font-numeric); font-size: 14px; font-weight: 800;
-  color: #FFFFFF;
-  -webkit-text-stroke: 0.5px var(--ss-navy);
-  text-shadow: 1px 1px 0 var(--ss-navy);
-  letter-spacing: 0.04em;
+  font-family: var(--font-body); font-size: 14px; font-weight: 800;
+  color: rgba(255,255,255,0.6); text-shadow: var(--text-shadow);
 }
 .aim-tap-text {
-  font-family: var(--font-flavor); font-size: 40px; font-weight: 900;
-  color: #FFFFFF;
-  -webkit-text-stroke: 1.5px var(--ss-navy);
-  text-shadow: 2px 2px 0 var(--ss-navy), 0 5px 0 rgba(12,40,70,.4);
-  text-transform: uppercase; letter-spacing: 0.04em;
+  font-family: var(--font-display); font-size: 34px;
+  color: white; text-shadow: var(--text-shadow-heavy);
   position: absolute; top: 38%; left: 50%; transform: translateX(-50%);
   animation: aimBounce 1s ease-in-out infinite;
 }
 .upgrade-cards {
-  position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+  position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
   display: flex; gap: 10px;
   pointer-events: auto;
 }
 .upg-card {
-  width: 118px;
-  background: #fff;
-  border: 3px solid var(--ss-navy);
-  border-radius: var(--r-xl);
-  box-shadow: 0 6px 0 0 rgba(12,40,70,.2);
-  padding: 10px 10px 0;
-  text-align: center;
-  overflow: hidden;
+  width: 120px; background: linear-gradient(180deg, rgba(26,58,92,0.92), rgba(20,40,65,0.96));
+  border: 3px solid rgba(255,255,255,0.15);
+  border-radius: 14px; padding: 10px 8px 8px; text-align: center;
   cursor: pointer; user-select: none;
-  transition: transform 0.1s;
-  position: relative;
+  transition: transform 0.1s, border-color 0.15s;
 }
-.upg-card:active { transform: translateY(3px); box-shadow: 0 3px 0 0 rgba(12,40,70,.2); }
+.upg-card:active { transform: scale(0.95); }
+.upg-card:hover { border-color: rgba(255,255,255,0.4); }
 .upg-card-title {
-  font-family: var(--font-display); font-size: 13px; font-weight: 800;
-  color: var(--ss-navy);
-  text-transform: uppercase; letter-spacing: 0.04em;
-  margin-bottom: 4px;
+  font-family: var(--font-display); font-size: 12px;
+  color: rgba(255,255,255,0.7); text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 4px;
 }
 .upg-card-icon {
-  background: var(--ss-blue-50);
-  border-radius: 14px;
-  border: 2px solid rgba(12,40,70,.15);
-  height: 56px;
-  display: grid; place-items: center;
-  font-size: 32px;
-  margin-bottom: 6px;
+  font-size: 32px; line-height: 1.1; margin-bottom: 4px;
 }
 .upg-card-level {
-  font-family: var(--font-numeric); font-size: 11px; font-weight: 800;
-  color: var(--ss-ink-500); margin-bottom: 5px;
+  font-family: var(--font-body); font-size: 11px; font-weight: 800;
+  color: rgba(255,255,255,0.5); margin-bottom: 5px;
 }
 .upg-card-dots {
-  display: flex; gap: 3px; justify-content: center; margin: 0 2px 8px;
+  display: flex; gap: 2px; justify-content: center; margin-bottom: 8px;
 }
 .upg-card-dot {
-  flex: 1; max-width: 9px; height: 9px; border-radius: 3px;
-  background: var(--ss-ink-100);
-  border: 1.5px solid rgba(12,40,70,.25);
+  width: 7px; height: 7px; border-radius: 50%;
+  background: rgba(255,255,255,0.15);
 }
-.upg-card-dot.filled {
-  background: var(--ss-yellow-500);
-  border-color: var(--ss-yellow-700);
-}
+.upg-card-dot.filled { background: var(--yellow); }
 .upg-card-btn {
-  margin: 0 -13px 0;
-  height: 40px;
-  display: flex; align-items: center; justify-content: center; gap: 5px;
-  font-family: var(--font-display); font-size: 13px; font-weight: 800;
-  color: #fff;
-  background: var(--ss-green-500);
-  border-top: 3px solid var(--ss-navy);
-  border-left: 0; border-right: 0; border-bottom: 0;
-  text-transform: uppercase; letter-spacing: 0.04em;
-  -webkit-text-stroke: 0.5px var(--ss-navy);
-  text-shadow: 1px 1px 0 var(--ss-navy);
-  cursor: pointer;
-  transition: background 0.1s;
+  font-family: var(--font-display); font-size: 13px;
+  color: white; background: var(--green);
+  border: 2px solid rgba(0,0,0,0.2); border-radius: 10px;
+  padding: 5px 0; width: 100%; cursor: pointer;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.25);
+  transition: transform 0.1s;
 }
-.upg-card-btn:hover { background: var(--ss-green-300); }
-.upg-card-btn.disabled {
-  background: var(--ss-ink-100);
-  color: var(--ss-ink-500);
-  -webkit-text-stroke: 0;
-  text-shadow: none;
-  cursor: default;
-}
-.upg-card-btn.maxed {
-  background: var(--ss-yellow-500);
-  color: var(--ss-navy);
-  -webkit-text-stroke: 0;
-  text-shadow: none;
-}
+.upg-card-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.25); }
+.upg-card-btn.disabled { background: #555; opacity: 0.5; cursor: default; }
+.upg-card-btn.maxed { background: var(--yellow); color: var(--dark); }
 
 /* Garage Screen */
 #screen-garage { justify-content: space-between; padding: 16px; }
@@ -414,26 +253,13 @@ canvas { display: block; width: 100%; height: 100%; }
   width: 100%; display: flex; justify-content: space-between; align-items: flex-start;
 }
 .garage-coins {
-  display: inline-flex; align-items: center;
-  height: 40px; padding: 0 16px 0 12px;
-  background: #fff; border: 3px solid var(--ss-navy);
-  border-radius: 999px;
-  box-shadow: 0 3px 0 0 rgba(12,40,70,.2);
-  font-family: var(--font-numeric); font-weight: 800; font-size: 18px;
-  color: var(--ss-navy);
+  font-family: var(--font-display); font-size: 22px;
+  color: var(--yellow); text-shadow: var(--text-shadow);
 }
 .garage-title {
-  display: inline-flex; align-items: center; justify-content: center;
-  padding: 8px 22px;
-  background: var(--ss-blue-500);
-  border: 3px solid var(--ss-navy);
-  border-radius: 12px;
-  box-shadow: 0 4px 0 rgba(12,40,70,.2);
-  font-family: var(--font-flavor); font-size: 18px; font-weight: 800;
-  color: #FFFFFF;
-  -webkit-text-stroke: 1px var(--ss-navy);
-  text-shadow: 1px 1px 0 var(--ss-navy);
-  text-transform: uppercase; letter-spacing: 0.04em;
+  font-family: var(--font-display); font-size: 20px;
+  color: rgba(255,255,255,0.6); text-shadow: var(--text-shadow);
+  text-transform: uppercase; letter-spacing: 2px;
 }
 .garage-middle {
   display: flex; align-items: center; justify-content: space-between;
@@ -441,31 +267,22 @@ canvas { display: block; width: 100%; height: 100%; }
   position: absolute; top: 18%; left: 50%; transform: translateX(-50%);
 }
 .garage-arrow {
-  width: 56px; height: 56px; border-radius: 50%;
-  background: #fff; border: 3px solid var(--ss-navy);
-  color: var(--ss-navy); font-size: 22px; cursor: pointer;
+  width: 52px; height: 52px; border-radius: 50%;
+  background: rgba(255,255,255,0.12); border: 3px solid rgba(255,255,255,0.3);
+  color: white; font-size: 26px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  user-select: none; transition: transform 0.1s, box-shadow 0.1s;
+  user-select: none; transition: background 0.15s, transform 0.1s;
   pointer-events: auto; flex-shrink: 0;
-  box-shadow: 0 4px 0 0 rgba(12,40,70,.2);
-  font-weight: 900;
 }
-.garage-arrow:active {
-  transform: translateY(3px);
-  box-shadow: 0 1px 0 0 rgba(12,40,70,.2);
-}
+.garage-arrow:hover { background: rgba(255,255,255,0.25); }
+.garage-arrow:active { transform: scale(0.88); }
 .garage-name-plate {
-  background: var(--ss-blue-500);
-  border: 3px solid var(--ss-navy);
-  border-radius: 14px; padding: 10px 32px;
-  box-shadow: 0 4px 0 rgba(12,40,70,.25);
-  font-family: var(--font-flavor); font-size: 28px; font-weight: 800;
-  color: #FFFFFF;
-  -webkit-text-stroke: 1px var(--ss-navy);
-  text-shadow: 1px 1px 0 var(--ss-navy);
-  text-transform: uppercase;
-  min-width: 160px; text-align: center;
-  letter-spacing: 0.03em;
+  background: linear-gradient(180deg, rgba(180,136,85,0.95), rgba(138,102,51,0.95));
+  border: 3px solid rgba(255,255,255,0.3);
+  border-radius: 14px; padding: 8px 28px;
+  font-family: var(--font-display); font-size: 28px;
+  color: white; text-shadow: var(--text-shadow-heavy);
+  text-transform: uppercase; min-width: 160px; text-align: center;
 }
 .garage-bottom {
   display: flex; flex-direction: column; align-items: center; gap: 12px;
@@ -478,46 +295,204 @@ canvas { display: block; width: 100%; height: 100%; }
   width: 10px; height: 10px; border-radius: 50%;
   background: rgba(255,255,255,0.25); transition: background 0.2s;
 }
-.garage-dot.active { background: var(--ss-yellow-500); border-color: var(--ss-yellow-700); }
-.garage-dot { border: 1.5px solid rgba(12,40,70,.25); background: var(--ss-ink-100); }
+.garage-dot.active { background: var(--yellow); }
 /* Skin row (nested under craft selector) */
 .skin-row {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  background: rgba(255,255,255,0.92);
-  border: 3px solid var(--ss-navy);
-  border-radius: 16px;
-  padding: 12px 24px;
-  box-shadow: 0 4px 0 rgba(12,40,70,.2);
-  margin-top: 4px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: rgba(0,0,0,0.2); border-radius: 12px;
+  padding: 10px 20px; margin-top: 4px;
   pointer-events: auto;
 }
 .skin-label {
-  font-family: var(--font-display); font-size: 12px; font-weight: 800;
-  color: var(--ss-ink-500);
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
+  font-family: var(--font-display); font-size: 11px;
+  color: rgba(255,255,255,0.4); text-transform: uppercase;
+  letter-spacing: 3px;
 }
 .skin-selector {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 10px;
 }
 .skin-name {
-  font-family: var(--font-flavor); font-size: 20px; font-weight: 800;
-  color: var(--ss-navy);
-  min-width: 120px; text-align: center;
-  text-transform: uppercase; letter-spacing: 0.02em;
+  font-family: var(--font-display); font-size: 18px;
+  color: white; text-shadow: var(--text-shadow);
+  min-width: 100px; text-align: center;
 }
 .skin-arrow {
-  width: 34px; height: 34px; border-radius: 50%;
-  background: var(--ss-blue-500); border: 2.5px solid var(--ss-navy);
-  color: #fff; font-size: 14px; font-weight: 900; cursor: pointer;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.25);
+  color: white; font-size: 14px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  user-select: none;
-  transition: transform 0.1s, box-shadow 0.1s;
-  box-shadow: 0 3px 0 0 var(--ss-blue-700);
+  user-select: none; transition: background 0.15s;
 }
-.skin-arrow:active {
-  transform: translateY(2px);
-  box-shadow: 0 1px 0 0 var(--ss-blue-700);
+.skin-arrow:hover { background: rgba(255,255,255,0.25); }
+.skin-arrow:active { transform: scale(0.9); }
+
+/* ===== Sled Surfers garage ===== */
+.ss-garage {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  padding: 14px 14px 0;
+  background: transparent;
+}
+.ss-garage-top {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.ss-garage-titles {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  pointer-events: none;
+}
+.ss-garage-subtitle {
+  font-family: var(--font-display); font-size: 13px;
+  color: #fff; letter-spacing: .06em;
+  text-shadow: 2px 2px 0 var(--ss-navy);
+  text-transform: uppercase;
+}
+.ss-coin-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: #fff; border: 3px solid var(--ss-navy);
+  border-radius: 999px; padding: 4px 12px;
+  font-family: var(--font-display); font-size: 18px; color: var(--ss-navy);
+  box-shadow: 0 3px 0 rgba(12,40,70,.18);
+}
+.ss-coin-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #FFE89A, var(--ss-yellow-500));
+  border: 2px solid var(--ss-navy);
+}
+.ss-ribbon {
+  background: var(--ss-blue-500);
+  border: 3px solid var(--ss-navy);
+  border-radius: 12px;
+  padding: 8px 22px;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 22px;
+  letter-spacing: .04em;
+  -webkit-text-stroke: 1px var(--ss-navy);
+  text-shadow: 1px 1px 0 var(--ss-navy);
+  box-shadow: 0 4px 0 rgba(12,40,70,.2);
+}
+.ss-close {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--ss-red-500); border: 3px solid var(--ss-navy);
+  color: #fff; font-size: 22px; font-weight: 800; cursor: pointer;
+  box-shadow: 0 4px 0 rgba(12,40,70,.25);
+  display: grid; place-items: center; line-height: 1;
+}
+.ss-close:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(12,40,70,.25); }
+.ss-garage-hero {
+  flex: 1; display: flex; flex-direction: column;
+  justify-content: flex-end; align-items: center; gap: 12px;
+  padding-bottom: 14px; pointer-events: none;
+}
+.ss-garage-panel {
+  background: linear-gradient(180deg, #E8F4FD 0%, #C8E1F5 100%);
+  border-top: 3px solid var(--ss-navy);
+  border-left: 3px solid var(--ss-navy);
+  border-right: 3px solid var(--ss-navy);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  padding: 14px 14px 18px;
+  margin: 0 -14px;
+  box-shadow: 0 -6px 0 rgba(12,40,70,.08);
+  pointer-events: auto;
+}
+.ss-garage-title {
+  font-family: var(--font-display); font-size: 42px;
+  color: #fff;
+  -webkit-text-stroke: 2px var(--ss-navy);
+  text-shadow: 3px 3px 0 var(--ss-navy);
+  letter-spacing: .04em;
+}
+.ss-skin-tabs { display: flex; gap: 8px; pointer-events: auto; flex-wrap: wrap; justify-content: center; }
+.ss-skin-tab {
+  background: #fff; border: 2.5px solid var(--ss-navy);
+  border-radius: 999px; padding: 4px 14px;
+  font-family: var(--font-display); font-size: 13px;
+  color: var(--ss-navy); cursor: pointer;
+  box-shadow: 0 3px 0 rgba(12,40,70,.18);
+  user-select: none;
+}
+.ss-skin-tab.active {
+  background: var(--ss-blue-500); color: #fff;
+  -webkit-text-stroke: .8px var(--ss-navy);
+  text-shadow: 1px 1px 0 var(--ss-navy);
+}
+.ss-select-pill {
+  pointer-events: auto; background: #fff;
+  border: 3px solid var(--ss-navy); border-radius: 999px;
+  padding: 12px 48px;
+  font-family: var(--font-display); font-size: 22px;
+  color: var(--ss-navy); cursor: pointer;
+  box-shadow: 0 6px 0 rgba(12,40,70,.2);
+}
+.ss-select-pill:active {
+  transform: translateY(3px); box-shadow: 0 3px 0 rgba(12,40,70,.2);
+}
+.ss-craft-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 10px; pointer-events: auto;
+}
+.ss-craft-card {
+  aspect-ratio: 1/1.1;
+  background: linear-gradient(180deg, #F0F7FC 0%, #C8E1F5 100%);
+  border: 3px solid var(--ss-navy); border-radius: var(--r-xl);
+  box-shadow: 0 6px 0 rgba(12,40,70,.18);
+  display: grid; place-items: center;
+  font-size: 40px; cursor: pointer; position: relative;
+  user-select: none;
+  transition: transform .1s;
+}
+.ss-craft-card:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(12,40,70,.18); }
+.ss-craft-card.active {
+  background: linear-gradient(180deg, #FFE89A 0%, var(--ss-yellow-500) 100%);
+  border-color: var(--ss-navy);
+}
+.ss-craft-card .ss-craft-label {
+  position: absolute; bottom: 4px;
+  font-family: var(--font-display); font-size: 10px;
+  color: var(--ss-navy); letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+/* ===== Level progression (Sled Surfers) ===== */
+.ss-level-row {
+  position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
+  width: min(340px, 80vw);
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 10px 14px;
+  background: rgba(255,255,255,.78);
+  border: 3px solid var(--ss-navy);
+  border-radius: 16px;
+  box-shadow: 0 4px 0 rgba(12,40,70,.18);
+  pointer-events: none;
+}
+.ss-level-label {
+  font-family: var(--font-display); font-size: 14px;
+  color: var(--ss-navy); letter-spacing: .08em;
+  text-align: center;
+}
+.ss-progress {
+  height: 14px;
+  background: var(--ss-ink-100);
+  border: 2px solid var(--ss-navy);
+  border-radius: 999px;
+  box-shadow: inset 0 2px 0 rgba(12,40,70,.18);
+  overflow: hidden;
+}
+.ss-progress__fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(180deg, var(--ss-blue-300), var(--ss-blue-500));
+  border-radius: 999px;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.4);
+  transition: width .6s ease-out;
+}
+.ss-progress__fill.complete {
+  background: linear-gradient(180deg, #FFE89A, var(--ss-yellow-500));
+}
+.ss-level-numeric {
+  font-family: var(--font-display); font-size: 12px;
+  color: var(--ss-navy); text-align: right;
 }
 
 @media (max-width: 400px) {
@@ -530,11 +505,8 @@ canvas { display: block; width: 100%; height: 100%; }
 /* Floating text */
 .float-text {
   position: absolute; pointer-events: none;
-  font-family: var(--font-flavor); font-size: 28px; font-weight: 900;
-  color: var(--ss-yellow-500);
-  -webkit-text-stroke: 1.5px var(--ss-navy);
-  text-shadow: 2px 2px 0 var(--ss-navy), 0 4px 0 rgba(12,40,70,.4);
-  text-transform: uppercase;
+  font-family: var(--font-display); font-size: 24px;
+  color: var(--yellow); text-shadow: var(--text-shadow);
   animation: floatUp 1.2s ease-out forwards;
   z-index: 20;
 }
@@ -566,32 +538,26 @@ canvas { display: block; width: 100%; height: 100%; }
 </div>
 
 <!-- Garage Screen (craft + skin selection) -->
-<div id="screen-garage" class="screen passthrough">
-  <div class="garage-top">
-    <div class="garage-coins" id="garage-coins">0</div>
-    <div class="garage-title">Workshop</div>
-    <div style="width:60px"></div>
-  </div>
-  <!-- Craft selector (primary) -->
-  <div class="garage-middle">
-    <div class="garage-arrow" id="craft-prev">&#9664;</div>
-    <div class="garage-name-plate" id="craft-name">BATHTUB</div>
-    <div class="garage-arrow" id="craft-next">&#9654;</div>
-  </div>
-  <div class="garage-bottom">
-    <!-- Craft dots -->
-    <div class="garage-dots" id="craft-dots"></div>
-    <!-- Skin selector (nested under craft) -->
-    <div class="skin-row" id="skin-row">
-      <div class="skin-label">SKIN</div>
-      <div class="skin-selector">
-        <div class="skin-arrow" id="skin-prev">&#9664;</div>
-        <div class="skin-name" id="skin-name">Classic</div>
-        <div class="skin-arrow" id="skin-next">&#9654;</div>
+<div id="screen-garage" class="screen">
+  <div class="ss-garage">
+    <div class="ss-garage-top">
+      <div class="ss-coin-chip"><span class="ss-coin-dot"></span><span id="garage-coins">0</span></div>
+      <div class="ss-garage-titles">
+        <div class="ss-garage-title" id="craft-name">BATHTUB</div>
+        <div class="ss-garage-subtitle" id="craft-subtitle">Soak and soar.</div>
       </div>
-      <div class="garage-dots" id="skin-dots"></div>
+      <button class="ss-close" id="btn-garage-close" aria-label="Close">&times;</button>
     </div>
-    <button class="game-btn green pulse" id="btn-garage-fly" style="font-size:28px;padding:16px 52px;">FLY!</button>
+
+    <!-- 3D craft renders in the canvas behind this transparent middle zone -->
+    <div class="ss-garage-hero">
+      <div class="ss-skin-tabs" id="skin-tabs"></div>
+      <button class="ss-select-pill" id="btn-garage-fly">Select</button>
+    </div>
+
+    <div class="ss-garage-panel">
+      <div class="ss-craft-grid" id="craft-grid"></div>
+    </div>
   </div>
 </div>
 
@@ -599,6 +565,11 @@ canvas { display: block; width: 100%; height: 100%; }
 <div id="screen-aim-hud" class="screen passthrough">
   <div class="aim-coins" id="aim-coins">0</div>
   <div class="aim-best" id="aim-best"></div>
+  <div class="ss-level-row">
+    <div class="ss-level-label">LEVEL 1</div>
+    <div class="ss-progress"><div class="ss-progress__fill" id="level-progress-fill"></div></div>
+    <div class="ss-level-numeric" id="level-progress-text">0 / 800m</div>
+  </div>
   <div class="aim-tap-text" id="aim-text">TAP TO FLY</div>
   <div class="power-display" id="power-text"></div>
   <div class="upgrade-cards" id="upgrade-cards"></div>
@@ -670,23 +641,23 @@ const UPGRADES = {
 // ===== CRAFT CATALOG =====
 // Each craft has skins — each skin is a complete GLB
 const CRAFTS = [
-  { id: 'bathtub', name: 'Bathtub', skins: [
+  { id: 'bathtub', name: 'Bathtub', icon: '\u{1F6C1}', subtitle: 'Soak. Launch. Splash.', skins: [
     { name: 'Classic',   file: 'Meshy_AI_Gilded_Bath_0330161619_texture.glb',       rotY: Math.PI * 1.5 },
     { name: 'Cardboard', file: 'Meshy_AI_Bathtub_Cardboard_0402170410_texture.glb', rotY: Math.PI * 0.5 },
   ]},
-  { id: 'rocket', name: 'Rocket', skins: [
+  { id: 'rocket', name: 'Rocket', icon: '\u{1F680}', subtitle: 'Ignite. Rise. Glory.', skins: [
     { name: 'Classic', file: 'Meshy_AI_Red_Stripe_Rocket_0330160432_texture.glb', rotY: Math.PI * 0.5 },
     { name: 'Delta',   file: 'Meshy_AI_Rocket_delta_0402170813_texture.glb',      rotY: Math.PI * 0.5 },
   ]},
-  { id: 'banana', name: 'Banana', skins: [
+  { id: 'banana', name: 'Banana', icon: '\u{1F34C}', subtitle: 'Slippery when airborne.', skins: [
     { name: 'Classic', file: 'Meshy_AI_banana_3d_0329211148_texture.glb',       rotY: Math.PI * 0.5 },
     { name: 'Biplane', file: 'Meshy_AI_Banana_Bip_0402164037_texture.glb',      rotY: Math.PI * 0.5 },
   ]},
-  { id: 'couch', name: 'Couch', skins: [
+  { id: 'couch', name: 'Couch', icon: '\u{1F6CB}\uFE0F', subtitle: 'Comfort meets gravity.', skins: [
     { name: 'Classic', file: 'Meshy_AI_couch_car_0330162428_texture.glb',       rotY: 0 },
     { name: 'Winged',  file: 'Meshy_AI_Couch_Standard_0402165535_texture.glb',  rotY: 0 },
   ]},
-  { id: 'shoe', name: 'Shoe', skins: [
+  { id: 'shoe', name: 'Shoe', icon: '\u{1F45F}', subtitle: 'Just do it. Off the ramp.', skins: [
     { name: 'Classic', file: 'Meshy_AI_shoe_car_0330163356_texture.glb',       rotY: Math.PI * 0.5 },
     { name: 'Biplane', file: 'Meshy_AI_Shoe_Bip_0402164732_texture.glb',      rotY: Math.PI * 0.5 },
   ]},
@@ -726,10 +697,13 @@ function toonifyModel(model) {
 
 // ===== SAVE / LOAD =====
 const SAVE_KEY = 'flugtag:save';
+const LEVEL_TARGET_M = 800;  // distance required in a single flight to clear the level
 const defaultSave = {
   coins: 0, totalDistance: 0, bestDistance: 0, totalFlights: 0,
   upgrades: { slingshot: 0, plane: 0, income: 0 },
   craftIdx: 0, skinIdx: 0,
+  levelTarget: LEVEL_TARGET_M,
+  levelComplete: false,
 };
 let save;
 function loadSave() {
@@ -968,120 +942,123 @@ for (let z = -20; z < 1500; z += 5 + Math.random() * 8) {
   }
 }
 
-// ===== AUSTRIAN COUNTRYSIDE HOUSES =====
-function createHouse(x, z, style) {
-  const group = new THREE.Group();
-
-  // Wall colors — Austrian countryside palette
-  const wallColors = [0xFFF8E0, 0xFFE4B5, 0xF5DEB3, 0xFAF0E6, 0xFFDAB9, 0xE8D8C0];
-  const roofColors = [0xCC4433, 0xBB5533, 0x994422, 0xAA3322, 0xDD6644];
-  const wallColor = wallColors[Math.floor(Math.random() * wallColors.length)];
-  const roofColor = roofColors[Math.floor(Math.random() * roofColors.length)];
-
-  const w = 2 + Math.random() * 1.5;
-  const h = 2 + Math.random() * 1.5;
-  const d = 2.5 + Math.random() * 1.5;
-
-  // Walls
-  const walls = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), toonMat(wallColor));
-  walls.position.y = h / 2;
-  walls.castShadow = true;
-  addOutline(walls, 0.02);
-  group.add(walls);
-
-  // Pitched roof
-  const roofGeo = new THREE.ConeGeometry(Math.max(w, d) * 0.65, h * 0.6, 4);
-  const roof = new THREE.Mesh(roofGeo, toonMat(roofColor));
-  roof.position.y = h + h * 0.25;
-  roof.rotation.y = Math.PI / 4;
-  roof.castShadow = true;
-  addOutline(roof, 0.02);
-  group.add(roof);
-
-  // Windows (small dark squares on front)
-  const winMat = toonMat(0x446688);
-  for (let wx = -0.4; wx <= 0.4; wx += 0.8) {
-    const win = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.35, 0.05), winMat);
-    win.position.set(wx, h * 0.55, d / 2 + 0.03);
-    group.add(win);
+// ===== AUSTRIAN VILLAGE (GLB houses + chapels) =====
+async function populateVillage() {
+  let houseProto, chapelProto;
+  try {
+    [houseProto, chapelProto] = await Promise.all([
+      loadGLB('austrian-alpine-house.glb'),
+      loadGLB('salzburg_baroque_chappel.glb'),
+    ]);
+  } catch (err) {
+    console.warn('Village GLB load failed:', err);
+    return;
   }
+  toonifyModel(houseProto);
+  toonifyModel(chapelProto);
 
-  // Door
-  const door = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.6, 0.05), toonMat(0x6B4226));
-  door.position.set(0, 0.3, d / 2 + 0.03);
-  group.add(door);
+  const houseBox  = new THREE.Box3().setFromObject(houseProto);
+  const chapelBox = new THREE.Box3().setFromObject(chapelProto);
+  const houseSize  = houseBox.getSize(new THREE.Vector3()).y || 1;
+  const chapelSize = chapelBox.getSize(new THREE.Vector3()).y || 1;
+  const HOUSE_TARGET_H  = 3.5;
+  const CHAPEL_TARGET_H = 8.0;
 
-  // Optional: chimney
-  if (Math.random() > 0.4) {
-    const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.8, 0.3), toonMat(0x886655));
-    chimney.position.set(w * 0.25, h + h * 0.35, 0);
-    group.add(chimney);
-  }
+  const placeClone = (proto, x, z, baseScale) => {
+    const inst = proto.clone();
+    inst.position.set(x, 0, z);
+    inst.rotation.y = Math.random() * Math.PI * 2;
+    const s = baseScale * (0.85 + Math.random() * 0.3);
+    inst.scale.setScalar(s);
+    scene.add(inst);
+  };
 
-  group.position.set(x, 0, z);
-  group.rotation.y = Math.random() * Math.PI * 2;
-  scene.add(group);
-  return group;
-}
-
-// Small church/chapel
-function createChapel(x, z) {
-  const group = new THREE.Group();
-
-  // Main building
-  const walls = new THREE.Mesh(new THREE.BoxGeometry(3, 3.5, 4), toonMat(0xFFF8E8));
-  walls.position.y = 1.75; walls.castShadow = true;
-  addOutline(walls, 0.02);
-  group.add(walls);
-
-  // Steep roof
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(2.8, 2, 4), toonMat(0x556655));
-  roof.position.y = 4.5; roof.rotation.y = Math.PI / 4;
-  addOutline(roof, 0.02);
-  group.add(roof);
-
-  // Steeple/tower
-  const tower = new THREE.Mesh(new THREE.BoxGeometry(1, 5, 1), toonMat(0xFFF8E8));
-  tower.position.set(0, 2.5, -2.2); tower.castShadow = true;
-  addOutline(tower, 0.02);
-  group.add(tower);
-
-  // Steeple top (onion dome — Austrian style)
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 8), toonMat(0x448866));
-  dome.position.set(0, 5.3, -2.2); dome.scale.y = 1.4;
-  group.add(dome);
-
-  // Cross on top
-  const cross = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.08), toonMat(0xCCAA44));
-  cross.position.set(0, 6.3, -2.2);
-  group.add(cross);
-  const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 0.08), toonMat(0xCCAA44));
-  crossH.position.set(0, 6.15, -2.2);
-  group.add(crossH);
-
-  group.position.set(x, 0, z);
-  group.rotation.y = Math.random() * Math.PI * 2;
-  scene.add(group);
-  return group;
-}
-
-// Scatter houses along both banks (further back from river)
-for (let z = 30; z < 1400; z += 30 + Math.random() * 50) {
-  for (const side of [-1, 1]) {
-    const dist = RIVER_WIDTH / 2 + 50 + Math.random() * 80;
-    createHouse(side * dist, z);
-    // Sometimes add a second house nearby (small cluster)
-    if (Math.random() > 0.5) {
-      createHouse(side * (dist + 5 + Math.random() * 8), z + (Math.random() - 0.5) * 10);
+  // Houses: dense scatter along both banks, z = 30..1400, behind the crowd.
+  for (let z = 30; z < 1400; z += 24 + Math.random() * 32) {
+    for (const side of [-1, 1]) {
+      const dist = RIVER_WIDTH / 2 + 50 + Math.random() * 80;
+      placeClone(houseProto, side * dist, z, HOUSE_TARGET_H / houseSize);
+      if (Math.random() > 0.45) {
+        placeClone(
+          houseProto,
+          side * (dist + 8 + Math.random() * 10),
+          z + (Math.random() - 0.5) * 14,
+          HOUSE_TARGET_H / houseSize
+        );
+      }
     }
   }
-}
 
-// A few chapels scattered along the route
-const chapelPositions = [
-  [-90, 150], [100, 400], [-110, 700], [95, 1000], [-85, 1300]
-];
-chapelPositions.forEach(([x, z]) => createChapel(x, z));
+  // Chapels: a handful as landmarks.
+  const chapelAnchors = [[-90, 150], [100, 400], [-110, 700], [95, 1000], [-85, 1300]];
+  for (const [x, z] of chapelAnchors) {
+    placeClone(chapelProto, x, z, CHAPEL_TARGET_H / chapelSize);
+  }
+}
+populateVillage();
+
+// ===== LEVEL FINISH LINE =====
+(function createFinishLine() {
+  const zFinish = LEVEL_TARGET_M;
+  const group = new THREE.Group();
+
+  // Striped candy-cane posts on each bank.
+  const postMatR = toonMat(0xEE3B3B);
+  const postMatW = toonMat(0xFFFFFF);
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < 6; i++) {
+      const seg = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.6, 0.6, 2.0, 12),
+        i % 2 === 0 ? postMatR : postMatW
+      );
+      seg.position.set(side * (RIVER_WIDTH / 2 + 2), 1 + i * 2.0, zFinish);
+      seg.castShadow = true;
+      group.add(seg);
+    }
+    // Post cap
+    const cap = new THREE.Mesh(
+      new THREE.SphereGeometry(0.9, 12, 8),
+      toonMat(0x3BA4E8)
+    );
+    cap.position.set(side * (RIVER_WIDTH / 2 + 2), 13.2, zFinish);
+    group.add(cap);
+  }
+
+  // "FINISH" banner across the river — texture baked on a canvas.
+  const cvs = document.createElement('canvas');
+  cvs.width = 1024; cvs.height = 192;
+  const cx = cvs.getContext('2d');
+  cx.fillStyle = '#3BA4E8';
+  cx.fillRect(0, 0, cvs.width, cvs.height);
+  cx.fillStyle = '#1D7DB8';
+  cx.fillRect(0, 0, cvs.width, 14);
+  cx.fillRect(0, cvs.height - 14, cvs.width, 14);
+  cx.font = 'bold 120px Boogaloo, Arial Black, sans-serif';
+  cx.textAlign = 'center';
+  cx.textBaseline = 'middle';
+  cx.lineWidth = 10;
+  cx.strokeStyle = '#163A5F';
+  cx.strokeText('FINISH', cvs.width / 2, cvs.height / 2 + 4);
+  cx.fillStyle = '#FFFFFF';
+  cx.fillText('FINISH', cvs.width / 2, cvs.height / 2 + 4);
+
+  const bannerTex = new THREE.CanvasTexture(cvs);
+  bannerTex.anisotropy = 4;
+  const bannerMat = new THREE.MeshBasicMaterial({ map: bannerTex, side: THREE.DoubleSide });
+  const banner = new THREE.Mesh(
+    new THREE.PlaneGeometry(RIVER_WIDTH + 8, 3.5),
+    bannerMat
+  );
+  banner.position.set(0, 11.5, zFinish);
+  group.add(banner);
+
+  // Subtle bob on the banner so it draws the eye.
+  group.userData.bobBase = 11.5;
+  group.userData.banner = banner;
+
+  scene.add(group);
+  window.__finishLineGroup = group;
+})();
 
 // ===== CROWD ON THE BANKS =====
 function createCrowdFigure(x, y, z) {
@@ -1507,9 +1484,9 @@ function setState(state) {
       craftGroup.rotation.set(0, 0, 0);
       updateBands(craftGroup.position, false);
       updateTrajectoryPreview(null, null, false);
-      // Camera: framing the craft on the deck
-      camTarget.set(4, RAMP_HEIGHT + 3, -8);
-      camLookTarget.set(0, RAMP_HEIGHT + 0.5, -1);
+      // Camera: hero framing — closer, 3/4 front view of the craft
+      camTarget.set(3.5, RAMP_HEIGHT + 2.2, -4.5);
+      camLookTarget.set(0, RAMP_HEIGHT + 1.2, -1.5);
       camLerp = 0.06;
       renderGarage();
       break;
@@ -1594,6 +1571,8 @@ function setState(state) {
       save.totalFlights++;
       const isNewRecord = flightDistance > save.bestDistance;
       if (isNewRecord) save.bestDistance = flightDistance;
+      const justClearedLevel = !save.levelComplete && flightDistance >= save.levelTarget;
+      if (justClearedLevel) save.levelComplete = true;
       writeSave();
 
       document.getElementById('res-dist').textContent = Math.floor(flightDistance) + 'm';
@@ -1604,6 +1583,24 @@ function setState(state) {
       if (isNewRecord) {
         document.getElementById('res-best').innerHTML = '<span class="new-record">NEW RECORD!</span>';
       }
+
+      // Level-clear ribbon — shown once, then persists as a "cleared" chip on future runs.
+      const card = document.querySelector('.results-card');
+      const existing = card.querySelector('.ss-level-ribbon');
+      if (existing) existing.remove();
+      if (justClearedLevel) {
+        const ribbon = document.createElement('div');
+        ribbon.className = 'ss-ribbon ss-level-ribbon';
+        ribbon.textContent = 'LEVEL 1 CLEARED!';
+        ribbon.style.cssText = 'background:#FF9500;margin:0 auto 12px;display:block;width:fit-content;';
+        card.prepend(ribbon);
+      } else if (save.levelComplete) {
+        const chip = document.createElement('div');
+        chip.className = 'ss-ribbon ss-level-ribbon';
+        chip.textContent = 'LEVEL 1 CLEAR';
+        chip.style.cssText = 'background:var(--ss-green-500);margin:0 auto 12px;display:block;width:fit-content;font-size:16px;padding:6px 16px;';
+        card.prepend(chip);
+      }
       break;
     }
 
@@ -1611,30 +1608,47 @@ function setState(state) {
 }
 
 // ===== GARAGE RENDERING =====
-function renderGarage() {
-  document.getElementById('garage-coins').textContent = '\u{1FA99} ' + save.coins;
-
-  // Craft name + dots
-  const craft = CRAFTS[currentCraftIdx];
-  document.getElementById('craft-name').textContent = craft.name;
-  renderDots('craft-dots', CRAFTS.length, currentCraftIdx);
-
-  // Skin name + dots
-  const skin = craft.skins[currentSkinIdx];
-  document.getElementById('skin-name').textContent = skin.name;
-  renderDots('skin-dots', craft.skins.length, currentSkinIdx);
-
-  // Hide skin row if only 1 skin
-  document.getElementById('skin-row').style.display = craft.skins.length > 1 ? '' : 'none';
+function selectCraft(idx) {
+  currentCraftIdx = idx;
+  currentSkinIdx = 0;
+  save.craftIdx = idx; save.skinIdx = 0; writeSave();
+  buildCraft(); renderGarage(); craftGroup.rotation.y = 0;
+}
+function selectSkin(idx) {
+  currentSkinIdx = idx;
+  save.skinIdx = idx; writeSave();
+  buildCraft(); renderGarage(); craftGroup.rotation.y = 0;
 }
 
-function renderDots(containerId, count, activeIdx) {
-  const el = document.getElementById(containerId);
-  el.innerHTML = '';
-  for (let i = 0; i < count; i++) {
-    const dot = document.createElement('div');
-    dot.className = 'garage-dot' + (i === activeIdx ? ' active' : '');
-    el.appendChild(dot);
+function renderGarage() {
+  document.getElementById('garage-coins').textContent = save.coins;
+
+  const craft = CRAFTS[currentCraftIdx];
+  document.getElementById('craft-name').textContent = craft.name.toUpperCase();
+  document.getElementById('craft-subtitle').textContent = craft.subtitle || '';
+
+  // Craft grid
+  const grid = document.getElementById('craft-grid');
+  grid.innerHTML = '';
+  CRAFTS.forEach((c, i) => {
+    const card = document.createElement('div');
+    card.className = 'ss-craft-card' + (i === currentCraftIdx ? ' active' : '');
+    card.innerHTML = '<span>' + c.icon + '</span><span class="ss-craft-label">' + c.name + '</span>';
+    card.addEventListener('click', (e) => { e.stopPropagation(); selectCraft(i); });
+    grid.appendChild(card);
+  });
+
+  // Skin tabs
+  const tabs = document.getElementById('skin-tabs');
+  tabs.innerHTML = '';
+  if (craft.skins.length > 1) {
+    craft.skins.forEach((s, i) => {
+      const tab = document.createElement('div');
+      tab.className = 'ss-skin-tab' + (i === currentSkinIdx ? ' active' : '');
+      tab.textContent = s.name;
+      tab.addEventListener('click', (e) => { e.stopPropagation(); selectSkin(i); });
+      tabs.appendChild(tab);
+    });
   }
 }
 
@@ -1643,6 +1657,14 @@ function renderUpgradeCards() {
   document.getElementById('aim-coins').textContent = '\u{1FA99} ' + save.coins;
   const best = save.bestDistance;
   document.getElementById('aim-best').textContent = best > 0 ? ('BEST: ' + Math.floor(best) + 'm') : '';
+
+  // Level progress bar
+  const pct = Math.min(100, (save.bestDistance / save.levelTarget) * 100);
+  const fill = document.getElementById('level-progress-fill');
+  fill.style.width = pct + '%';
+  fill.classList.toggle('complete', save.levelComplete);
+  document.getElementById('level-progress-text').textContent =
+    Math.floor(save.bestDistance) + ' / ' + save.levelTarget + 'm';
 
   const container = document.getElementById('upgrade-cards');
   container.innerHTML = '';
@@ -1799,37 +1821,7 @@ document.getElementById('btn-play').addEventListener('click', () => setState('GA
 document.getElementById('btn-fly-again').addEventListener('click', () => setState('READY'));
 document.getElementById('btn-garage').addEventListener('click', () => setState('GARAGE'));
 document.getElementById('btn-garage-fly').addEventListener('click', () => setState('READY'));
-
-// Craft arrows
-document.getElementById('craft-prev').addEventListener('click', (e) => {
-  e.stopPropagation();
-  currentCraftIdx = (currentCraftIdx - 1 + CRAFTS.length) % CRAFTS.length;
-  currentSkinIdx = 0;
-  save.craftIdx = currentCraftIdx; save.skinIdx = 0; writeSave();
-  buildCraft(); renderGarage(); craftGroup.rotation.y = 0;
-});
-document.getElementById('craft-next').addEventListener('click', (e) => {
-  e.stopPropagation();
-  currentCraftIdx = (currentCraftIdx + 1) % CRAFTS.length;
-  currentSkinIdx = 0;
-  save.craftIdx = currentCraftIdx; save.skinIdx = 0; writeSave();
-  buildCraft(); renderGarage(); craftGroup.rotation.y = 0;
-});
-// Skin arrows
-document.getElementById('skin-prev').addEventListener('click', (e) => {
-  e.stopPropagation();
-  const skins = CRAFTS[currentCraftIdx].skins;
-  currentSkinIdx = (currentSkinIdx - 1 + skins.length) % skins.length;
-  save.skinIdx = currentSkinIdx; writeSave();
-  buildCraft(); renderGarage(); craftGroup.rotation.y = 0;
-});
-document.getElementById('skin-next').addEventListener('click', (e) => {
-  e.stopPropagation();
-  const skins = CRAFTS[currentCraftIdx].skins;
-  currentSkinIdx = (currentSkinIdx + 1) % skins.length;
-  save.skinIdx = currentSkinIdx; writeSave();
-  buildCraft(); renderGarage(); craftGroup.rotation.y = 0;
-});
+document.getElementById('btn-garage-close').addEventListener('click', () => setState('TITLE'));
 
 // ===== FLIGHT PHYSICS UPDATE =====
 function updateFlightPhysics(dt) {
