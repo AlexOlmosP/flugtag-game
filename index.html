@@ -50,7 +50,7 @@ html, body {
   overflow: hidden;
   position: fixed;
   touch-action: none;
-  background: url('Cartoon_panoramic_skyline_202604022029.png') center -35vh / 100% auto no-repeat, linear-gradient(to bottom, #5AABE0 0%, #87CEEB 40%, #B8D4E8 100%);
+  background: linear-gradient(to bottom, #5AABE0 0%, #87CEEB 40%, #B8D4E8 100%);
   font-family: var(--font-body);
 }
 canvas { display: block; width: 100%; height: 100%; }
@@ -658,6 +658,15 @@ canvas { display: block; width: 100%; height: 100%; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/meshoptimizer@0.20.0/meshopt_decoder.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/GammaCorrectionShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/VignetteShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/objects/Reflector.js"></script>
 <script>
 // ===== CONSTANTS & CONFIG =====
 const DEG2RAD = Math.PI / 180;
@@ -780,20 +789,37 @@ function getIncomeMulti()    { return 1.0 + save.upgrades.income * 0.3; }
 // ===== THREE.JS SCENE SETUP =====
 const canvas = document.getElementById('game-canvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-renderer.setClearColor(0x000000, 0); // fully transparent clear
+renderer.setClearColor(0x87CEEB, 1); // opaque — the sky lives in-scene now
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 4000);
+
+// Post-processing: render -> bloom -> vignette -> gamma
+// (RT stays linear in r128, so the gamma pass does the final sRGB conversion.)
+const composer = new THREE.EffectComposer(renderer);
+composer.addPass(new THREE.RenderPass(scene, camera));
+const bloomPass = new THREE.UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth / 2, window.innerHeight / 2), 0.22, 0.4, 0.92
+);
+composer.addPass(bloomPass);
+const vignettePass = new THREE.ShaderPass(THREE.VignetteShader);
+vignettePass.uniforms.offset.value = 1.05;
+vignettePass.uniforms.darkness.value = 1.08;
+composer.addPass(vignettePass);
+composer.addPass(new THREE.ShaderPass(THREE.GammaCorrectionShader));
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
 });
 
 // ===== TOON MATERIAL HELPERS =====
@@ -835,7 +861,7 @@ scene.add(ambientLight);
 const sunLight = new THREE.DirectionalLight(0xfff4e0, 1.0);
 sunLight.position.set(40, 80, 30);
 sunLight.castShadow = true;
-sunLight.shadow.mapSize.set(1024, 1024);
+sunLight.shadow.mapSize.set(2048, 2048);
 sunLight.shadow.camera.near = 1;
 sunLight.shadow.camera.far = 200;
 sunLight.shadow.camera.left = -60;
@@ -847,8 +873,278 @@ scene.add(sunLight);
 const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x3D7A2D, 0.5);
 scene.add(hemiLight);
 
-// ===== SKY (transparent — CSS background shows through) =====
-scene.background = null;
+// ===== SKY SYSTEM (in-scene: dome, sun, clouds, birds, haze, panorama) =====
+// Distance fog gives the toon world atmospheric depth; sky elements opt out.
+scene.fog = new THREE.Fog(0xC8E2F0, 320, 1900);
+
+const skyGroup = new THREE.Group();
+scene.add(skyGroup);
+
+// Gradient sky dome
+(function createSkyDome() {
+  const c = document.createElement('canvas'); c.width = 4; c.height = 256;
+  const g = c.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, 0, 256);
+  grad.addColorStop(0.0,  '#3E8FD8');  // zenith
+  grad.addColorStop(0.45, '#7FC4EE');
+  grad.addColorStop(0.72, '#C9E9F8');  // horizon glow
+  grad.addColorStop(1.0,  '#E8F4E0');  // below horizon (hidden by ground)
+  g.fillStyle = grad; g.fillRect(0, 0, 4, 256);
+  const tex = new THREE.CanvasTexture(c);
+  tex.encoding = THREE.sRGBEncoding;
+  const dome = new THREE.Mesh(
+    new THREE.SphereGeometry(2800, 24, 18),
+    new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, fog: false, depthWrite: false })
+  );
+  dome.renderOrder = -10;
+  skyGroup.add(dome);
+})();
+
+// Sun disc + halo (bloom picks these up)
+const sunDir = new THREE.Vector3(0.45, 0.62, 0.64).normalize();
+(function createSun() {
+  const sun = new THREE.Mesh(
+    new THREE.CircleGeometry(60, 24),
+    new THREE.MeshBasicMaterial({ color: 0xFFFBE8, fog: false, depthWrite: false })
+  );
+  const halo = new THREE.Mesh(
+    new THREE.CircleGeometry(150, 24),
+    new THREE.MeshBasicMaterial({ color: 0xFFF2C4, fog: false, depthWrite: false, transparent: true, opacity: 0.32 })
+  );
+  sun.position.copy(sunDir).multiplyScalar(2400);
+  halo.position.copy(sunDir).multiplyScalar(2420);
+  sun.renderOrder = -9; halo.renderOrder = -9;
+  sun.onBeforeRender = function () { this.lookAt(camera.position); };
+  halo.onBeforeRender = function () { this.lookAt(camera.position); };
+  skyGroup.add(sun); skyGroup.add(halo);
+})();
+
+// Salzburg panorama as a flat far backdrop (undistorted), with procedural
+// low-poly scenery filling the sides on wide screens.
+(function createPanoramaBackdrop() {
+  const tex = new THREE.TextureLoader().load('Cartoon_panoramic_skyline_202604022029.png');
+  tex.encoding = THREE.sRGBEncoding;
+  tex.anisotropy = 4;
+  // Crop the PNG's baked water band off the bottom
+  tex.repeat.set(1, 0.78);
+  tex.offset.set(0, 0.22);
+  const plane = new THREE.Mesh(
+    new THREE.PlaneGeometry(3400, 680),
+    new THREE.MeshBasicMaterial({ map: tex, fog: false, depthWrite: false })
+  );
+  plane.position.set(0, 265, 2350);
+  plane.rotation.y = Math.PI; // face the player
+  plane.renderOrder = -8;
+  skyGroup.add(plane);
+})();
+
+// Painted-style side scenery: snowy peaks, hills, and pastel building clusters
+// continue the skyline beyond the panorama's edges (drawn before it, so the
+// PNG wins where they overlap).
+(function createBackdropSides() {
+  const flat = (color, extra) => Object.assign(
+    new THREE.MeshBasicMaterial({ color, fog: false, depthWrite: false }), extra || {});
+  const place = [];
+
+  // Unit cone with base at y=0 — scaled per instance
+  const coneGeo = new THREE.ConeGeometry(1, 1, 6); coneGeo.translate(0, 0.5, 0);
+  const peaks = [];
+  for (const side of [-1, 1]) {
+    let x = 1450;
+    while (x < 3100) {
+      const r = 220 + Math.random() * 200;
+      const h = 280 + Math.random() * 260;
+      peaks.push({ x: side * (x + r * 0.3), z: 2450 + Math.random() * 220, r, h, rot: Math.random() * Math.PI });
+      x += r * (1.1 + Math.random() * 0.5);
+    }
+  }
+  const rock = new THREE.InstancedMesh(coneGeo, flat(0x93A9C6), peaks.length);
+  const snow = new THREE.InstancedMesh(coneGeo, flat(0xF2F7FB), peaks.length);
+  const d = new THREE.Object3D();
+  peaks.forEach((p, i) => {
+    d.position.set(p.x, -30, p.z);
+    d.rotation.set(0, p.rot, 0);
+    d.scale.set(p.r, p.h, p.r * (0.75 + Math.random() * 0.4));
+    d.updateMatrix();
+    rock.setMatrixAt(i, d.matrix);
+    // Snow cap: flush-fitting smaller cone on the upper part of the peak
+    d.position.y = -30 + p.h * 0.55;
+    d.scale.set(p.r * 0.47, p.h * 0.47, p.r * 0.47);
+    d.updateMatrix();
+    snow.setMatrixAt(i, d.matrix);
+  });
+  place.push(rock, snow);
+
+  // Rolling green hills in front of the peaks
+  const hillGeo = new THREE.SphereGeometry(1, 10, 7);
+  const hillSpots = [];
+  for (const side of [-1, 1]) {
+    for (let k = 0; k < 5; k++) {
+      hillSpots.push({
+        x: side * (1500 + k * 330 + Math.random() * 140),
+        z: 2240 + Math.random() * 120,
+        rx: 280 + Math.random() * 160, ry: 95 + Math.random() * 75,
+      });
+    }
+  }
+  const hills = new THREE.InstancedMesh(
+    hillGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, depthWrite: false }), hillSpots.length
+  );
+  const greens = [new THREE.Color(0x74B257), new THREE.Color(0x88C166), new THREE.Color(0x67A14C)];
+  hillSpots.forEach((p, i) => {
+    d.position.set(p.x, 0, p.z);
+    d.rotation.set(0, 0, 0);
+    d.scale.set(p.rx, p.ry, p.rx * 0.8);
+    d.updateMatrix();
+    hills.setMatrixAt(i, d.matrix);
+    hills.setColorAt(i, greens[i % greens.length]);
+  });
+  place.push(hills);
+
+  // Distant pastel building clusters + church towers on the hills
+  const boxGeo = new THREE.BoxGeometry(1, 1, 1); boxGeo.translate(0, 0.5, 0);
+  const lots = [];
+  for (const side of [-1, 1]) {
+    for (let c = 0; c < 2; c++) {
+      const cx = side * (1680 + c * 520 + Math.random() * 160);
+      for (let b = 0; b < 8; b++) {
+        lots.push({
+          x: cx + (Math.random() - 0.5) * 360,
+          z: 2160 + Math.random() * 110,
+          w: 46 + Math.random() * 60, h: 52 + Math.random() * 90,
+        });
+      }
+    }
+  }
+  const town = new THREE.InstancedMesh(
+    boxGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, depthWrite: false }), lots.length
+  );
+  const pastels = [0xF2D8A7, 0xE9B8BC, 0xF6F0E4, 0xCDE0CB, 0xD9C7E8].map(c => new THREE.Color(c));
+  lots.forEach((p, i) => {
+    d.position.set(p.x, 28, p.z); // perched on the hill band
+    d.rotation.set(0, (Math.random() - 0.5) * 0.5, 0);
+    d.scale.set(p.w, p.h, p.w * 0.9);
+    d.updateMatrix();
+    town.setMatrixAt(i, d.matrix);
+    town.setColorAt(i, pastels[i % pastels.length]);
+  });
+  place.push(town);
+
+  // A couple of church towers with patina domes per side
+  for (const side of [-1, 1]) {
+    for (let t = 0; t < 2; t++) {
+      const tx = side * (1750 + t * 560 + Math.random() * 120), tz = 2170;
+      const tower = new THREE.Mesh(new THREE.BoxGeometry(26, 130, 26), flat(0xF6F0E4));
+      tower.position.set(tx, 95, tz);
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(20, 10, 8), flat(0x4F8F7B));
+      dome.position.set(tx, 168, tz); dome.scale.set(1, 1.25, 1);
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(7, 22, 8), flat(0x4F8F7B));
+      tip.position.set(tx, 200, tz);
+      place.push(tower, dome, tip);
+    }
+  }
+
+  for (const m of place) {
+    m.renderOrder = -9; // behind the panorama plane
+    if (m.frustumCulled !== undefined) m.frustumCulled = false;
+    skyGroup.add(m);
+  }
+})();
+
+// (Haze ridges removed — at flight altitude the transparent cylinder walls read
+// as sky artifacts; distance fog + the panorama carry the depth instead.)
+
+// Puffy toon clouds drifting (instanced ellipsoid blobs, 3 per cloud)
+const CLOUD_N = 11;
+let cloudMesh = null;
+const cloudData = [];
+(function createClouds() {
+  cloudMesh = new THREE.InstancedMesh(
+    new THREE.SphereGeometry(1, 10, 8),
+    new THREE.MeshBasicMaterial({ color: 0xFFFFFF, fog: false }),
+    CLOUD_N * 3
+  );
+  for (let i = 0; i < CLOUD_N; i++) {
+    cloudData.push({
+      x: (Math.random() - 0.5) * 900,
+      y: 70 + Math.random() * 90,
+      z: -100 + Math.random() * 1700,
+      s: 14 + Math.random() * 16,
+      drift: 1.2 + Math.random() * 1.6,
+    });
+  }
+  cloudMesh.frustumCulled = false;
+  scene.add(cloudMesh);
+})();
+const cloudDummy = new THREE.Object3D();
+function updateClouds(time) {
+  for (let i = 0; i < CLOUD_N; i++) {
+    const cd = cloudData[i];
+    let x = cd.x + time * cd.drift;
+    x = ((x + 1100) % 2200) - 1100; // wrap across the sky
+    const lobes = [[0, 0, 1.0], [-0.85, -0.12, 0.62], [0.8, -0.1, 0.7]];
+    for (let l = 0; l < 3; l++) {
+      cloudDummy.position.set(x + lobes[l][0] * cd.s, cd.y + lobes[l][1] * cd.s, cd.z);
+      cloudDummy.scale.set(cd.s * lobes[l][2], cd.s * lobes[l][2] * 0.55, cd.s * lobes[l][2] * 0.8);
+      cloudDummy.rotation.set(0, 0, 0);
+      cloudDummy.updateMatrix();
+      cloudMesh.setMatrixAt(i * 3 + l, cloudDummy.matrix);
+    }
+  }
+  cloudMesh.instanceMatrix.needsUpdate = true;
+}
+
+// Birds circling over the river (two instanced wing meshes, flapping)
+const BIRD_N = 8;
+let birdL = null, birdR = null;
+const birdData = [];
+(function createBirds() {
+  const wingL = new THREE.PlaneGeometry(1.0, 0.34); wingL.translate(-0.5, 0, 0);
+  const wingR = new THREE.PlaneGeometry(1.0, 0.34); wingR.translate(0.5, 0, 0);
+  const mat = () => new THREE.MeshBasicMaterial({ color: 0x2E4A66, side: THREE.DoubleSide });
+  birdL = new THREE.InstancedMesh(wingL, mat(), BIRD_N);
+  birdR = new THREE.InstancedMesh(wingR, mat(), BIRD_N);
+  for (let i = 0; i < BIRD_N; i++) {
+    birdData.push({
+      cx: (Math.random() - 0.5) * 120,
+      cy: 26 + Math.random() * 22,
+      cz: 60 + Math.random() * 700,
+      r: 18 + Math.random() * 26,
+      speed: 0.25 + Math.random() * 0.2,
+      phase: Math.random() * Math.PI * 2,
+      flap: 7 + Math.random() * 4,
+    });
+  }
+  birdL.frustumCulled = false;
+  birdR.frustumCulled = false;
+  scene.add(birdL); scene.add(birdR);
+})();
+const birdDummy = new THREE.Object3D();
+function updateBirds(time) {
+  for (let i = 0; i < BIRD_N; i++) {
+    const b = birdData[i];
+    const a = time * b.speed + b.phase;
+    const x = b.cx + Math.cos(a) * b.r;
+    const z = b.cz + Math.sin(a) * b.r;
+    const y = b.cy + Math.sin(time * 0.7 + b.phase) * 2;
+    const heading = a + Math.PI / 2;
+    const flap = Math.sin(time * b.flap + b.phase) * 0.75;
+    birdDummy.position.set(x, y, z);
+    birdDummy.rotation.set(0, -heading, flap, 'YXZ');
+    birdDummy.updateMatrix();
+    birdL.setMatrixAt(i, birdDummy.matrix);
+    birdDummy.rotation.set(0, -heading, -flap, 'YXZ');
+    birdDummy.updateMatrix();
+    birdR.setMatrixAt(i, birdDummy.matrix);
+  }
+  birdL.instanceMatrix.needsUpdate = true;
+  birdR.instanceMatrix.needsUpdate = true;
+}
+
+// Sky follows the camera down the course so the dome never ends
+function updateSky() {
+  skyGroup.position.z = camera.position.z;
+}
 
 // ===== RIVER WATER (stylized premium: scrolling diffuse + normal map + foam) =====
 const RIVER_WIDTH = 50;
@@ -926,28 +1222,53 @@ function makeWaterNormalTexture() {
 
 const waterDiffuse = makeWaterDiffuseTexture();
 const waterNormals = makeWaterNormalTexture();
-const waterGeo = new THREE.PlaneGeometry(RIVER_WIDTH, WATER_LENGTH, 24, 96);
+const waterGeo = new THREE.PlaneGeometry(RIVER_WIDTH, WATER_LENGTH, 36, 200);
 waterGeo.rotateX(-Math.PI / 2);
+const waterTime = { value: 0 };
 const waterMat = new THREE.MeshPhongMaterial({
   color: 0xE6FAFF,
   map: waterDiffuse,
   normalMap: waterNormals,
   normalScale: new THREE.Vector2(0.55, 0.55),
-  specular: 0xBFEFFF,
-  shininess: 85,
+  specular: 0xDFF7FF,
+  shininess: 110,
   emissive: 0x0C3D4D,
   emissiveIntensity: 0.22,
 });
+// Waves run on the GPU with analytic normals (specular glints track the swell)
+const WAVE_GLSL = `
+uniform float uTime;
+float waveH(float x, float z, float t) {
+  return sin(x * 0.10 + t * 0.9) * 0.11
+       + sin(z * 0.055 + t * 0.7) * 0.10
+       + sin((x + z) * 0.042 - t * 0.5) * 0.06
+       + sin(z * 0.13 - t * 1.3) * 0.045;
+}
+vec3 waveN(float x, float z, float t) {
+  float dx = 0.011 * cos(x * 0.10 + t * 0.9) + 0.00252 * cos((x + z) * 0.042 - t * 0.5);
+  float dz = 0.0055 * cos(z * 0.055 + t * 0.7) + 0.00252 * cos((x + z) * 0.042 - t * 0.5)
+           + 0.00585 * cos(z * 0.13 - t * 1.3);
+  return normalize(vec3(-dx * 10.0, 1.0, -dz * 10.0));
+}`;
+waterMat.onBeforeCompile = (shader) => {
+  shader.uniforms.uTime = waterTime;
+  shader.vertexShader = shader.vertexShader
+    .replace('#include <common>', '#include <common>\n' + WAVE_GLSL)
+    .replace('#include <beginnormal_vertex>', 'vec3 objectNormal = waveN(position.x, position.z, uTime);')
+    .replace('#include <begin_vertex>',
+      'vec3 transformed = vec3(position);\ntransformed.y += waveH(position.x, position.z, uTime);');
+};
 const water = new THREE.Mesh(waterGeo, waterMat);
 water.receiveShadow = true;
 water.position.y = -0.1;
 scene.add(water);
 
-// Shared wave height (world x/z)
+// Shared wave height (world x/z) — must match WAVE_GLSL above
 function waveY(x, z, t) {
   return Math.sin(x * 0.10 + t * 0.9) * 0.11
        + Math.sin(z * 0.055 + t * 0.7) * 0.10
-       + Math.sin((x + z) * 0.042 - t * 0.5) * 0.06;
+       + Math.sin((x + z) * 0.042 - t * 0.5) * 0.06
+       + Math.sin(z * 0.13 - t * 1.3) * 0.045;
 }
 
 // Foam strips hugging both banks (scalloped alpha texture, follows the waves)
@@ -985,10 +1306,78 @@ const foamStrips = [];
     });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(side * (RIVER_WIDTH / 2 - 1.05), 0, 0);
-    mesh.renderOrder = 1;
+    mesh.renderOrder = 2;
     scene.add(mesh);
     foamStrips.push({ mesh, geo, tex, side });
   }
+})();
+
+// ===== PLANAR REFLECTIONS (Reflector blended over the stylized water) =====
+const reflectExclude = []; // objects hidden during the mirror pass
+const reflector = (function createReflector() {
+  const shader = {
+    uniforms: {
+      color: { value: null },
+      tDiffuse: { value: null },
+      textureMatrix: { value: null },
+      tNormal: { value: null },
+      uTime: { value: 0 },
+    },
+    vertexShader: `
+      uniform mat4 textureMatrix;
+      varying vec4 vUvP;
+      varying vec3 vWorld;
+      void main() {
+        vUvP = textureMatrix * vec4(position, 1.0);
+        vWorld = (modelMatrix * vec4(position, 1.0)).xyz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: `
+      uniform vec3 color;
+      uniform sampler2D tDiffuse;
+      uniform sampler2D tNormal;
+      uniform float uTime;
+      varying vec4 vUvP;
+      varying vec3 vWorld;
+      void main() {
+        vec2 nUv = vWorld.xz * 0.075 + vec2(0.0, -uTime * 0.045);
+        vec3 n = texture2D(tNormal, nUv).rgb * 2.0 - 1.0;
+        vec4 uv4 = vUvP;
+        uv4.xy += n.xy * 0.42 * uv4.w;   // waves distort the mirror
+        vec3 refl = texture2DProj(tDiffuse, uv4).rgb;
+        float dist = distance(cameraPosition.xz, vWorld.xz);
+        float fade = clamp(1.0 - dist / 260.0, 0.0, 1.0);
+        gl_FragColor = vec4(refl * color, 0.16 + 0.36 * fade);
+      }`,
+  };
+  const geo = new THREE.PlaneGeometry(RIVER_WIDTH, WATER_LENGTH);
+  const r = new THREE.Reflector(geo, {
+    clipBias: 0.05,
+    textureWidth: 512,
+    textureHeight: 512,
+    color: 0xEAF7FB,
+    shader,
+  });
+  r.rotation.x = -Math.PI / 2;
+  r.position.y = 0.34; // just above the wave crests
+  r.material.transparent = true;
+  r.material.depthWrite = false;
+  r.material.uniforms.uTime = waterTime;          // share the wave clock
+  r.material.uniforms.tNormal.value = waterNormals;
+  r.renderOrder = 1;
+  scene.add(r);
+
+  // Don't mirror the water itself / overlays, and skip the heavy village GLBs
+  reflectExclude.push(water);
+  foamStrips.forEach(f => reflectExclude.push(f.mesh));
+  const prevOBR = r.onBeforeRender;
+  r.onBeforeRender = function (rdr, scn, cam, g, m, grp) {
+    const saved = [];
+    for (const o of reflectExclude) { saved.push(o.visible); o.visible = false; }
+    prevOBR.call(this, rdr, scn, cam, g, m, grp);
+    for (let i = 0; i < reflectExclude.length; i++) reflectExclude[i].visible = saved[i];
+  };
+  return r;
 })();
 
 // Expanding foam rings on splash impact
@@ -1000,9 +1389,10 @@ for (let i = 0; i < 2; i++) {
     color: 0xEAFBFF, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false,
   }));
   ring.visible = false;
-  ring.renderOrder = 2;
+  ring.renderOrder = 3;
   scene.add(ring);
   splashRings.push({ mesh: ring, t: -1, delay: i * 0.18 });
+  reflectExclude.push(ring);
 }
 function triggerSplashRings(x, z) {
   splashRings.forEach(r => {
@@ -1023,13 +1413,9 @@ function updateSplashRings(dt) {
   });
 }
 
-// Water + foam animation
+// Water + foam animation (water verts displace in the vertex shader now)
 function updateWater(time, dt) {
-  const pos = waterGeo.attributes.position;
-  for (let i = 0; i < pos.count; i++) {
-    pos.setY(i, waveY(pos.getX(i), pos.getZ(i), time));
-  }
-  pos.needsUpdate = true;
+  waterTime.value = time;
 
   for (const f of foamStrips) {
     const fp = f.geo.attributes.position;
@@ -1123,10 +1509,10 @@ createBank(1);
 // ===== TREES (instanced — bank rows + dense forest in 2 draw calls) =====
 (function createTrees() {
   const spots = [];
-  // Rows behind the promenade
+  // Rows behind the city blocks (between the townhouses and the village)
   for (let z = -20; z < 1500; z += 8 + Math.random() * 12) {
     for (const side of [-1, 1]) {
-      const offset = RIVER_WIDTH / 2 + 9 + Math.random() * 22;
+      const offset = RIVER_WIDTH / 2 + 30 + Math.random() * 24;
       spots.push({ x: side * offset + (Math.random() - 0.5) * 4, z });
     }
   }
@@ -1180,60 +1566,338 @@ createBank(1);
   scene.add(blobs);
 })();
 
-// ===== AUSTRIAN VILLAGE (GLB houses + chapels) =====
-async function populateVillage() {
-  let houseProto, chapelProto;
-  try {
-    [houseProto, chapelProto] = await Promise.all([
-      loadGLB('austrian-alpine-house.glb'),
-      loadGLB('salzburg_baroque_chappel.glb'),
-    ]);
-  } catch (err) {
-    console.warn('Village GLB load failed:', err);
-    return;
+// ===== SALZBURG RIVERFRONT (Salzach city: street, townhouses, cafes, lamps, cathedrals) =====
+(function buildSalzburg() {
+  const sRGB = t => { t.encoding = THREE.sRGBEncoding; return t; };
+  const CITY_FRONT = RIVER_WIDTH / 2 + 13;   // building faces start here
+  const CATHEDRAL_ZONES = [{ side: -1, z: 505 }, { side: 1, z: 905 }];
+
+  // --- Cobbled riverfront street along both banks ---
+  const cobbleTex = (function () {
+    const c = document.createElement('canvas'); c.width = 128; c.height = 128;
+    const g = c.getContext('2d');
+    g.fillStyle = '#CBC5BC'; g.fillRect(0, 0, 128, 128);
+    g.strokeStyle = '#B3ACA2'; g.lineWidth = 3;
+    for (let row = 0; row < 8; row++) {
+      const y = row * 16;
+      g.beginPath(); g.moveTo(0, y); g.lineTo(128, y); g.stroke();
+      const off = (row % 2) * 16;
+      for (let x = off; x <= 128; x += 32) { g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + 16); g.stroke(); }
+    }
+    const t = sRGB(new THREE.CanvasTexture(c));
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(2, 220);
+    return t;
+  })();
+  for (const side of [-1, 1]) {
+    const street = new THREE.Mesh(
+      new THREE.BoxGeometry(6.6, 0.14, 1520),
+      new THREE.MeshToonMaterial({ map: cobbleTex, gradientMap: gradientMap3 })
+    );
+    street.position.set(side * (RIVER_WIDTH / 2 + 9.9), 0.07, 730);
+    street.receiveShadow = true;
+    scene.add(street);
   }
-  toonifyModel(houseProto);
-  toonifyModel(chapelProto);
 
-  const houseBox  = new THREE.Box3().setFromObject(houseProto);
-  const chapelBox = new THREE.Box3().setFromObject(chapelProto);
-  const houseSize  = houseBox.getSize(new THREE.Vector3()).y || 1;
-  const chapelSize = chapelBox.getSize(new THREE.Vector3()).y || 1;
-  const HOUSE_TARGET_H  = 3.5;
-  const CHAPEL_TARGET_H = 8.0;
+  // --- Getreidegasse-style townhouse facades (windows + shop fronts baked) ---
+  function facadeTexture(base, awning) {
+    const c = document.createElement('canvas'); c.width = 256; c.height = 384;
+    const g = c.getContext('2d');
+    g.fillStyle = base; g.fillRect(0, 0, 256, 384);
+    // upper floors: 3 rows x 4 windows (canvas bottom = building bottom, so rows sit high)
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 4; col++) {
+        const x = 22 + col * 58, y = 26 + row * 86;
+        g.fillStyle = '#FFFFFF'; g.fillRect(x - 4, y - 4, 36, 52);
+        g.fillStyle = '#8FBFD9'; g.fillRect(x, y, 28, 44);
+        g.strokeStyle = '#FFFFFF'; g.lineWidth = 3;
+        g.beginPath(); g.moveTo(x + 14, y); g.lineTo(x + 14, y + 44); g.moveTo(x, y + 22); g.lineTo(x + 28, y + 22); g.stroke();
+        g.fillStyle = '#C9554A'; g.fillRect(x - 5, y + 44, 38, 8);
+      }
+    }
+    // ground floor: stone band, arched door, shop window with awning
+    g.fillStyle = 'rgba(60,45,30,0.12)'; g.fillRect(0, 290, 256, 94);
+    g.fillStyle = '#6B4A33';
+    g.beginPath(); g.arc(60, 340, 26, Math.PI, 0); g.fill(); g.fillRect(34, 340, 52, 44);
+    g.fillStyle = '#4A3526'; g.fillRect(42, 330, 36, 54);
+    g.fillStyle = '#FFFFFF'; g.fillRect(126, 318, 102, 50);
+    g.fillStyle = '#8FBFD9'; g.fillRect(132, 324, 90, 38);
+    g.fillStyle = awning;
+    for (let s = 0; s < 6; s++) { if (s % 2 === 0) g.fillRect(120 + s * 19, 296, 19, 20); }
+    g.fillStyle = '#FFFFFF';
+    for (let s = 0; s < 6; s++) { if (s % 2 === 1) g.fillRect(120 + s * 19, 296, 19, 20); }
+    // cornice
+    g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, 256, 9);
+    return sRGB(new THREE.CanvasTexture(c));
+  }
+  const palettes = [
+    ['#F2D8A7', '#B5523C'], ['#E9B8BC', '#3F7E5B'], ['#CDE0CB', '#C2654A'],
+    ['#F6F0E4', '#1D7DB8'], ['#BFD2E4', '#9C4434'],
+  ];
 
-  const placeClone = (proto, x, z, baseScale) => {
-    const inst = proto.clone();
-    inst.position.set(x, 0, z);
-    inst.rotation.y = Math.random() * Math.PI * 2;
-    const s = baseScale * (0.85 + Math.random() * 0.3);
-    inst.scale.setScalar(s);
-    scene.add(inst);
-  };
+  // Row layout with side-street gaps; cathedral zones stay clear
+  const lots = [];
+  for (const side of [-1, 1]) {
+    let z = -18;
+    while (z < 1480) {
+      const zone = CATHEDRAL_ZONES.find(cz => cz.side === side && z > cz.z - 20 && z < cz.z + 20);
+      if (zone) { z = zone.z + 20; continue; }
+      if (Math.random() < 0.12) { z += 7 + Math.random() * 6; continue; } // side street
+      const w = 5.6 + Math.random() * 2.4;
+      lots.push({ side, z: z + w / 2, w });
+      z += w + 0.4 + Math.random() * 1.0;
+    }
+  }
 
-  // Houses: dense scatter along both banks, z = 30..1400, behind the crowd.
+  const bodyGeo = new THREE.BoxGeometry(7, 12, 6.5); bodyGeo.translate(0, 6, 0);
+  const roofGeo = new THREE.CylinderGeometry(4.3, 4.3, 7.0, 3, 1, false, Math.PI);
+  roofGeo.rotateX(Math.PI / 2); roofGeo.scale(1, 0.55, 1); roofGeo.translate(0, 13.15, 0);
+
+  const bodyMeshes = palettes.map(([base, awn]) => new THREE.InstancedMesh(
+    bodyGeo,
+    new THREE.MeshToonMaterial({ map: facadeTexture(base, awn), gradientMap: gradientMap3 }),
+    lots.length
+  ));
+  const cityRoofs = new THREE.InstancedMesh(
+    roofGeo,
+    new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: gradientMap3 }),
+    lots.length
+  );
+  const roofTones = [new THREE.Color(0xA8534A), new THREE.Color(0x8E6A5A), new THREE.Color(0x7E8B96)];
+  const counts = palettes.map(() => 0);
+  const dummy = new THREE.Object3D();
+  lots.forEach((lot, i) => {
+    const hs = 0.8 + Math.random() * 0.45;
+    const ws = lot.w / 6.5;
+    dummy.position.set(lot.side * (CITY_FRONT + 3.5), 0, lot.z);
+    dummy.rotation.set(0, 0, 0);
+    dummy.scale.set(1, hs, ws);
+    dummy.updateMatrix();
+    const v = (Math.random() * bodyMeshes.length) | 0;
+    bodyMeshes[v].setMatrixAt(counts[v]++, dummy.matrix);
+    const rs = 0.85 + Math.random() * 0.3;
+    dummy.scale.set(1, rs, ws);
+    dummy.position.y = 12 * (hs - rs); // roof base sits on the scaled body top
+    dummy.updateMatrix();
+    cityRoofs.setMatrixAt(i, dummy.matrix);
+    cityRoofs.setColorAt(i, roofTones[i % roofTones.length]);
+  });
+  bodyMeshes.forEach((m, v) => { m.count = counts[v]; m.castShadow = true; m.frustumCulled = false; scene.add(m); });
+  cityRoofs.castShadow = true; cityRoofs.frustumCulled = false; scene.add(cityRoofs);
+
+  // --- Street lamps along the river side of the street ---
+  (function buildLamps() {
+    const spots = [];
+    for (const side of [-1, 1]) for (let z = 14; z < 1480; z += 26) spots.push({ x: side * (RIVER_WIDTH / 2 + 7.5), z });
+    const poles = new THREE.InstancedMesh(
+      (function () { const gco = new THREE.CylinderGeometry(0.06, 0.09, 3.4, 6); gco.translate(0, 1.7, 0); return gco; })(),
+      toonMat(0x2E5444), spots.length
+    );
+    const lanterns = new THREE.InstancedMesh(
+      (function () { const gco = new THREE.BoxGeometry(0.3, 0.42, 0.3); gco.translate(0, 3.55, 0); return gco; })(),
+      new THREE.MeshBasicMaterial({ color: 0xFFE2A0 }), spots.length
+    );
+    lanterns.instanceMatrix = poles.instanceMatrix;
+    const d = new THREE.Object3D();
+    spots.forEach((p, i) => {
+      d.position.set(p.x, 0.1, p.z); d.rotation.set(0, 0, 0); d.scale.setScalar(1);
+      d.updateMatrix();
+      poles.setMatrixAt(i, d.matrix);
+    });
+    poles.frustumCulled = false; lanterns.frustumCulled = false;
+    scene.add(poles); scene.add(lanterns);
+  })();
+
+  // --- Cafe terraces: parasols + tables clustered on the street ---
+  (function buildCafes() {
+    const umb = [], tbl = [];
+    for (let k = 0; k < 13; k++) {
+      const side = k % 2 === 0 ? -1 : 1;
+      const cz = 52 + k * 112;
+      for (let u = 0; u < 3; u++) umb.push({
+        x: side * (RIVER_WIDTH / 2 + 8.4 + Math.random() * 3.4), z: cz + (Math.random() - 0.5) * 13,
+      });
+      for (let t = 0; t < 4; t++) tbl.push({
+        x: side * (RIVER_WIDTH / 2 + 8.2 + Math.random() * 3.8), z: cz + (Math.random() - 0.5) * 15,
+      });
+    }
+    const poleGeo = new THREE.CylinderGeometry(0.045, 0.045, 2.3, 6); poleGeo.translate(0, 1.15, 0);
+    const topGeo = new THREE.ConeGeometry(1.3, 0.62, 8); topGeo.translate(0, 2.5, 0);
+    const umbPoles = new THREE.InstancedMesh(poleGeo, toonMat(0xF6F0E4), umb.length);
+    const umbTops = new THREE.InstancedMesh(topGeo, new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: gradientMap3 }), umb.length);
+    umbTops.instanceMatrix = umbPoles.instanceMatrix;
+    const umbCols = [0xEE3B3B, 0xF6F0E4, 0x3F7E5B, 0xFFC41F].map(c => new THREE.Color(c));
+    const d = new THREE.Object3D();
+    umb.forEach((p, i) => {
+      d.position.set(p.x, 0.12, p.z);
+      d.rotation.set(0, Math.random() * Math.PI, 0);
+      d.scale.setScalar(0.9 + Math.random() * 0.3);
+      d.updateMatrix();
+      umbPoles.setMatrixAt(i, d.matrix);
+      umbTops.setColorAt(i, umbCols[i % umbCols.length]);
+    });
+    const tTopGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.07, 10); tTopGeo.translate(0, 0.84, 0);
+    const tLegGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.84, 6); tLegGeo.translate(0, 0.42, 0);
+    const tTops = new THREE.InstancedMesh(tTopGeo, toonMat(0xF6FAFC), tbl.length);
+    const tLegs = new THREE.InstancedMesh(tLegGeo, toonMat(0x163A5F), tbl.length);
+    tLegs.instanceMatrix = tTops.instanceMatrix;
+    tbl.forEach((p, i) => {
+      d.position.set(p.x, 0.12, p.z); d.rotation.set(0, 0, 0); d.scale.setScalar(1);
+      d.updateMatrix();
+      tTops.setMatrixAt(i, d.matrix);
+    });
+    for (const m of [umbPoles, umbTops, tTops, tLegs]) { m.frustumCulled = false; scene.add(m); }
+  })();
+
+  // --- Salzburg cathedral landmarks (twin towers + green dome) ---
+  function buildCathedral() {
+    const g = new THREE.Group();
+    const add = (mesh, x, y, z) => { mesh.position.set(x, y, z); mesh.castShadow = true; g.add(mesh); return mesh; };
+    const white = 0xF6F0E4, patina = 0x4F8F7B;
+    add(new THREE.Mesh(new THREE.BoxGeometry(11, 9, 16), toonMat(white)), 0, 4.5, -3);
+    for (const tx of [-3.8, 3.8]) {
+      add(new THREE.Mesh(new THREE.BoxGeometry(3.1, 15, 3.1), toonMat(white)), tx, 7.5, 5.5);
+      const dome = add(new THREE.Mesh(new THREE.SphereGeometry(1.95, 12, 10), toonMat(patina)), tx, 16.2, 5.5);
+      dome.scale.set(1, 1.2, 1);
+      add(new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.5, 10), toonMat(patina)), tx, 18.6, 5.5);
+      add(new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), toonMat(0xFFC41F)), tx, 19.5, 5.5);
+      const clock = new THREE.Mesh(new THREE.CircleGeometry(0.7, 16), new THREE.MeshBasicMaterial({ color: 0xFFFFFF }));
+      clock.position.set(tx, 11.5, 7.08); g.add(clock);
+    }
+    add(new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, 2.6, 14), toonMat(white)), 0, 10.3, -3);
+    const bigDome = add(new THREE.Mesh(new THREE.SphereGeometry(4.1, 16, 12), toonMat(patina)), 0, 12.6, -3);
+    bigDome.scale.set(1, 1.1, 1);
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 1.6, 10), toonMat(white)), 0, 17.4, -3);
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 8), toonMat(0xFFC41F)), 0, 18.5, -3);
+    return g;
+  }
+  for (const cz of CATHEDRAL_ZONES) {
+    const cat = buildCathedral();
+    cat.position.set(cz.side * (CITY_FRONT + 7), 0, cz.z);
+    cat.rotation.y = cz.side > 0 ? -Math.PI / 2 : Math.PI / 2; // towers face the river
+    scene.add(cat);
+  }
+})();
+
+// ===== AUSTRIAN VILLAGE (procedural toon — gabled houses, shutters, onion-dome chapels) =====
+(function buildVillage() {
+  const sRGB = t => { t.encoding = THREE.sRGBEncoding; return t; };
+
+  // Alpine wall: plaster + timber trim + shuttered windows with flower boxes
+  function wallTexture(plaster) {
+    const c = document.createElement('canvas'); c.width = 256; c.height = 256;
+    const g = c.getContext('2d');
+    g.fillStyle = plaster; g.fillRect(0, 0, 256, 256);
+    g.fillStyle = '#6B4A33';
+    g.fillRect(0, 0, 12, 256); g.fillRect(244, 0, 12, 256);   // corner timbers
+    g.fillRect(0, 0, 256, 10); g.fillRect(0, 246, 256, 10);   // top/base bands
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 3; col++) {
+        const x = 38 + col * 72, y = 38 + row * 110;
+        g.fillStyle = '#6B4A33'; g.fillRect(x - 12, y, 10, 48);  g.fillRect(x + 38, y, 10, 48); // shutters
+        g.fillStyle = '#FFFFFF'; g.fillRect(x - 3, y - 3, 42, 54);                              // frame
+        g.fillStyle = '#9ED4EE'; g.fillRect(x, y, 36, 48);                                      // glass
+        g.strokeStyle = '#FFFFFF'; g.lineWidth = 3;
+        g.beginPath(); g.moveTo(x + 18, y); g.lineTo(x + 18, y + 48); g.moveTo(x, y + 24); g.lineTo(x + 36, y + 24); g.stroke();
+        g.fillStyle = '#EE3B3B'; g.fillRect(x - 4, y + 48, 44, 9);                              // flower box
+      }
+    }
+    return sRGB(new THREE.CanvasTexture(c));
+  }
+
+  // Shingle rows drawn light — instanceColor tints them brick/rust per house
+  const roofTex = (function () {
+    const c = document.createElement('canvas'); c.width = 128; c.height = 128;
+    const g = c.getContext('2d');
+    g.fillStyle = '#E8E2DC'; g.fillRect(0, 0, 128, 128);
+    g.strokeStyle = 'rgba(60,30,20,0.30)'; g.lineWidth = 4;
+    for (let y = 10; y < 128; y += 16) { g.beginPath(); g.moveTo(0, y); g.lineTo(128, y); g.stroke(); }
+    const t = sRGB(new THREE.CanvasTexture(c));
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(2, 2);
+    return t;
+  })();
+
+  // Layout
+  const spots = [];
   for (let z = 30; z < 1400; z += 24 + Math.random() * 32) {
     for (const side of [-1, 1]) {
       const dist = RIVER_WIDTH / 2 + 50 + Math.random() * 80;
-      placeClone(houseProto, side * dist, z, HOUSE_TARGET_H / houseSize);
+      spots.push({ x: side * dist, z, side });
       if (Math.random() > 0.45) {
-        placeClone(
-          houseProto,
-          side * (dist + 8 + Math.random() * 10),
-          z + (Math.random() - 0.5) * 14,
-          HOUSE_TARGET_H / houseSize
-        );
+        spots.push({ x: side * (dist + 9 + Math.random() * 10), z: z + (Math.random() - 0.5) * 14, side });
       }
     }
   }
 
-  // Chapels: a handful as landmarks.
-  const chapelAnchors = [[-90, 150], [100, 400], [-110, 700], [95, 1000], [-85, 1300]];
-  for (const [x, z] of chapelAnchors) {
-    placeClone(chapelProto, x, z, CHAPEL_TARGET_H / chapelSize);
+  const bodyGeo = new THREE.BoxGeometry(4, 2.6, 5); bodyGeo.translate(0, 1.3, 0);
+  const roofGeo = new THREE.CylinderGeometry(2.9, 2.9, 5.8, 3, 1, false, Math.PI);
+  roofGeo.rotateX(Math.PI / 2); roofGeo.scale(1, 0.8, 1); roofGeo.translate(0, 3.76, 0);
+  const chimGeo = new THREE.BoxGeometry(0.5, 1.0, 0.5);
+
+  const plasters = ['#F5EBDC', '#FAF6EE', '#F2DFA8'];
+  const bodyMeshes = plasters.map(p => new THREE.InstancedMesh(
+    bodyGeo, new THREE.MeshToonMaterial({ map: wallTexture(p), gradientMap: gradientMap3 }), spots.length
+  ));
+  const roofs = new THREE.InstancedMesh(
+    roofGeo, new THREE.MeshToonMaterial({ color: 0xffffff, map: roofTex, gradientMap: gradientMap3 }), spots.length
+  );
+  const chims = new THREE.InstancedMesh(chimGeo, toonMat(0xFAF6EE), spots.length);
+  const tones = [new THREE.Color(0xB5523C), new THREE.Color(0x9C4434), new THREE.Color(0xC2654A)];
+  const counts = bodyMeshes.map(() => 0);
+  let chimCount = 0;
+  const dummy = new THREE.Object3D();
+  spots.forEach((p, i) => {
+    const s = 0.85 + Math.random() * 0.35;
+    const yaw = (p.side > 0 ? -Math.PI / 2 : Math.PI / 2) + (Math.random() - 0.5) * 0.6;
+    dummy.position.set(p.x, 0, p.z);
+    dummy.rotation.set(0, yaw, 0);
+    dummy.scale.setScalar(s);
+    dummy.updateMatrix();
+    const v = (Math.random() * bodyMeshes.length) | 0;
+    bodyMeshes[v].setMatrixAt(counts[v]++, dummy.matrix);
+    roofs.setMatrixAt(i, dummy.matrix);
+    roofs.setColorAt(i, tones[i % tones.length]);
+    if (Math.random() < 0.55) {
+      const cd = new THREE.Object3D();
+      cd.position.copy(dummy.position); cd.rotation.copy(dummy.rotation); cd.scale.copy(dummy.scale);
+      cd.translateX(1.1 * s); cd.translateZ(1.3 * s); cd.position.y = 4.6 * s;
+      cd.updateMatrix();
+      chims.setMatrixAt(chimCount++, cd.matrix);
+    }
+  });
+  bodyMeshes.forEach((m, v) => { m.count = counts[v]; m.castShadow = true; m.frustumCulled = false; scene.add(m); });
+  roofs.castShadow = true; roofs.frustumCulled = false; scene.add(roofs);
+  chims.count = chimCount; chims.frustumCulled = false; scene.add(chims);
+
+  // Chapels: white tower + patina onion dome, cloned at the landmark anchors
+  function buildChapel() {
+    const g = new THREE.Group();
+    const add = (mesh) => { mesh.castShadow = true; g.add(mesh); return mesh; };
+    add(new THREE.Mesh(new THREE.BoxGeometry(2.4, 6.5, 2.4), toonMat(0xFAF6EE))).position.set(0, 3.25, 1.6);
+    add(new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.28, 2.7), toonMat(0xE3D9C8))).position.set(0, 6.5, 1.6);
+    const dome = add(new THREE.Mesh(new THREE.SphereGeometry(1.55, 14, 12), toonMat(0x4F8F7B)));
+    dome.scale.set(1, 1.25, 1); dome.position.set(0, 7.6, 1.6);
+    add(new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.5, 10), toonMat(0x4F8F7B))).position.set(0, 9.6, 1.6);
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), toonMat(0xFFC41F))).position.set(0, 10.5, 1.6);
+    const clock = new THREE.Mesh(new THREE.CircleGeometry(0.55, 16), new THREE.MeshBasicMaterial({ color: 0xFFFFFF }));
+    clock.position.set(0, 5.1, 2.82); g.add(clock);
+    add(new THREE.Mesh(new THREE.BoxGeometry(3.6, 3.2, 6), toonMat(0xFAF6EE))).position.set(0, 1.6, -2.2);
+    const naveRoofGeo = new THREE.CylinderGeometry(2.4, 2.4, 6.4, 3, 1, false, Math.PI);
+    naveRoofGeo.rotateX(Math.PI / 2); naveRoofGeo.scale(1, 0.72, 1);
+    add(new THREE.Mesh(naveRoofGeo, toonMat(0x9C4434))).position.set(0, 4.05, -2.2);
+    return g;
   }
-}
-populateVillage();
+  const chapelAnchors = [[-90, 150], [100, 400], [-110, 700], [95, 1000], [-85, 1300]];
+  const proto = buildChapel();
+  for (const [x, z] of chapelAnchors) {
+    const inst = proto.clone();
+    inst.position.set(x, 0, z);
+    inst.rotation.y = x > 0 ? -Math.PI / 2 : Math.PI / 2; // face the river
+    inst.scale.setScalar(0.95 + Math.random() * 0.2);
+    scene.add(inst);
+  }
+})();
 
 // ===== LEVEL FINISH LINE =====
 (function createFinishLine() {
@@ -1315,6 +1979,7 @@ let crowdN = 0, crowdBody = null;
 let crowdZ, crowdAmp, crowdFreq, crowdPhase;
 let crowdHype = 0;
 let crowdPrevLo = 0, crowdPrevHi = 0;
+let crowdArmL = null, crowdArmR = null, crowdArmSlot = null, crowdArmN = 0;
 const crowdFlagSpots = [];
 
 (function buildCrowd() {
@@ -1355,6 +2020,14 @@ const crowdFlagSpots = [];
   legs.instanceMatrix = crowdBody.instanceMatrix;
   heads.instanceMatrix = crowdBody.instanceMatrix;
 
+  // Raised cheering arms for a chunk of the jumpers (own buffer, y-synced)
+  const armLGeo = new THREE.BoxGeometry(0.36, 0.11, 0.11); armLGeo.rotateZ(0.85); armLGeo.translate(-0.31, 1.16, 0);
+  const armRGeo = new THREE.BoxGeometry(0.36, 0.11, 0.11); armRGeo.rotateZ(-0.85); armRGeo.translate(0.31, 1.16, 0);
+  crowdArmL = new THREE.InstancedMesh(armLGeo, mkMat(), crowdN);
+  crowdArmR = new THREE.InstancedMesh(armRGeo, mkMat(), crowdN);
+  crowdArmR.instanceMatrix = crowdArmL.instanceMatrix;
+  crowdArmSlot = new Int32Array(crowdN).fill(-1);
+
   const shirt = [0xFF6644, 0x44AAFF, 0xFFDD22, 0x66DD66, 0xFF44AA, 0xAA44FF, 0xFFFFFF, 0xFF8833, 0x33CCC4, 0xEE3B3B]
     .map(c => new THREE.Color(c));
   const pants = [0x2B3A4A, 0x4A3A2B, 0x33424E, 0x6B4A33, 0x444455].map(c => new THREE.Color(c));
@@ -1373,17 +2046,27 @@ const crowdFlagSpots = [];
     crowdBody.setMatrixAt(i, dummy.matrix);
     crowdBody.setColorAt(i, shirt[(Math.random() * shirt.length) | 0]);
     legs.setColorAt(i, pants[(Math.random() * pants.length) | 0]);
-    heads.setColorAt(i, skin[(Math.random() * skin.length) | 0]);
+    const skinTone = skin[(Math.random() * skin.length) | 0];
+    heads.setColorAt(i, skinTone);
     crowdZ[i] = p.z;
     crowdAmp[i] = Math.random() < 0.62 ? 0.10 + Math.random() * 0.32 : 0; // jumpers vs standers
     crowdFreq[i] = 2.0 + Math.random() * 1.7;
     crowdPhase[i] = Math.random() * Math.PI * 2;
+    if (crowdAmp[i] > 0 && Math.random() < 0.5) {
+      crowdArmSlot[i] = crowdArmN;
+      crowdArmL.setMatrixAt(crowdArmN, dummy.matrix);
+      crowdArmL.setColorAt(crowdArmN, skinTone);
+      crowdArmR.setColorAt(crowdArmN, skinTone);
+      crowdArmN++;
+    }
     if (i % 23 === 0) {
       crowdFlagSpots.push({ x: p.x, z: p.z, yaw: p.yaw, phase: Math.random() * Math.PI * 2 });
     }
   });
-  for (const m of [legs, crowdBody, heads]) {
-    m.castShadow = true;
+  crowdArmL.count = crowdArmN;
+  crowdArmR.count = crowdArmN;
+  for (const m of [legs, crowdBody, heads, crowdArmL, crowdArmR]) {
+    m.castShadow = m !== crowdArmL && m !== crowdArmR;
     m.frustumCulled = false;
     scene.add(m);
   }
@@ -1395,18 +2078,27 @@ function updateCrowd(time, dt) {
   crowdHype = Math.max(0, crowdHype - dt);
   const focusZ = craftGroup.position.z;
   const arr = crowdBody.instanceMatrix.array;
+  const aArr = crowdArmL.instanceMatrix.array;
   const lo = lowerBound(crowdZ, crowdN, focusZ - 90);
   const hi = lowerBound(crowdZ, crowdN, focusZ + 130);
   for (let i = crowdPrevLo; i < crowdPrevHi; i++) {
-    if (i < lo || i >= hi) arr[i * 16 + 13] = PROM_Y;
+    if (i < lo || i >= hi) {
+      arr[i * 16 + 13] = PROM_Y;
+      if (crowdArmSlot[i] >= 0) aArr[crowdArmSlot[i] * 16 + 13] = PROM_Y;
+    }
   }
   const hype = 1 + crowdHype * 0.9;
   for (let i = lo; i < hi; i++) {
     const a = crowdAmp[i];
     if (a === 0) continue;
-    arr[i * 16 + 13] = PROM_Y + Math.abs(Math.sin(time * crowdFreq[i] + crowdPhase[i])) * a * hype;
+    // Stadium wave: a cheer crest travels down the banks
+    const wave = 0.55 + 0.45 * Math.sin(crowdZ[i] * 0.045 - time * 6.0);
+    const y = PROM_Y + Math.abs(Math.sin(time * crowdFreq[i] + crowdPhase[i])) * a * hype * wave;
+    arr[i * 16 + 13] = y;
+    if (crowdArmSlot[i] >= 0) aArr[crowdArmSlot[i] * 16 + 13] = y;
   }
   crowdBody.instanceMatrix.needsUpdate = true;
+  crowdArmL.instanceMatrix.needsUpdate = true;
   crowdPrevLo = lo; crowdPrevHi = hi;
 }
 
@@ -1458,11 +2150,12 @@ function updateFlags(time) {
     t.repeat.set(6, 1);
     return t;
   }
+  // Market stalls on the riverfront street
   const spots = [];
   for (const side of [-1, 1]) {
     for (let z = 70; z < 1420; z += 90 + Math.random() * 70) {
       spots.push({
-        x: side * (RIVER_WIDTH / 2 + 8.5 + Math.random() * 5),
+        x: side * (RIVER_WIDTH / 2 + 8.2 + Math.random() * 2.6),
         z: z + (Math.random() - 0.5) * 30,
         rot: (Math.random() - 0.5) * 0.5,
       });
@@ -1486,7 +2179,7 @@ function updateFlags(time) {
   spots.forEach((p, i) => {
     dummy.position.set(p.x, 0.05, p.z);
     dummy.rotation.set(0, p.rot, 0);
-    dummy.scale.setScalar(0.9 + Math.random() * 0.3);
+    dummy.scale.setScalar(0.62 + Math.random() * 0.2);
     dummy.updateMatrix();
     bases.setMatrixAt(i, dummy.matrix);
   });
@@ -1495,7 +2188,7 @@ function updateFlags(time) {
       const p = spots[spotIdx];
       dummy.position.set(p.x, 0.05, p.z);
       dummy.rotation.set(0, p.rot, 0);
-      dummy.scale.setScalar(0.9 + Math.random() * 0.25);
+      dummy.scale.setScalar(0.62 + Math.random() * 0.18);
       dummy.updateMatrix();
       m.setMatrixAt(j, dummy.matrix);
     });
@@ -1613,6 +2306,120 @@ function updateBoats(time) {
   scene.add(mesh);
 })();
 
+// ===== RAMP HERO PROPS (arch, jumbotron, speakers, searchlights) =====
+let launchArch = null;
+(function createLaunchArch() {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+  const g = c.getContext('2d');
+  g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, 64, 64);
+  g.fillStyle = '#EE3B3B'; g.fillRect(0, 0, 32, 64);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.encoding = THREE.sRGBEncoding;
+  tex.repeat.set(12, 1);
+  const arch = new THREE.Mesh(
+    new THREE.TorusGeometry(7.2, 0.7, 10, 30, Math.PI),
+    new THREE.MeshToonMaterial({ map: tex, gradientMap: gradientMap3, transparent: true })
+  );
+  arch.position.set(0, RAMP_HEIGHT + 0.1, 8.5); // start gate the craft flies through
+  arch.castShadow = true;
+  scene.add(arch);
+  launchArch = arch;
+})();
+
+// Jumbotron: big screen on the left bank showing live event text
+let jumboTex = null, jumboLast = '';
+(function createJumbotron() {
+  const group = new THREE.Group();
+  const pole = new THREE.Mesh(new THREE.BoxGeometry(0.7, 7.5, 0.7), toonMat(0x4A5A6A));
+  pole.position.y = 3.75;
+  pole.castShadow = true;
+  group.add(pole);
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(7.2, 4.3, 0.5), toonMat(0x163A5F));
+  frame.position.y = 9.2;
+  frame.castShadow = true;
+  group.add(frame);
+  const c = document.createElement('canvas'); c.width = 512; c.height = 288;
+  jumboTex = new THREE.CanvasTexture(c);
+  jumboTex.encoding = THREE.sRGBEncoding;
+  const screen = new THREE.Mesh(
+    new THREE.PlaneGeometry(6.6, 3.7),
+    new THREE.MeshBasicMaterial({ map: jumboTex }) // unlit = glows like an LED wall
+  );
+  screen.position.set(0, 9.2, 0.27);
+  group.add(screen);
+  group.position.set(-34.5, 0.1, 26);
+  group.rotation.y = 0.45; // angled toward the launch ramp
+  scene.add(group);
+})();
+function drawJumbo(big, small) {
+  const key = big + '|' + (small || '');
+  if (key === jumboLast || !jumboTex) return;
+  jumboLast = key;
+  const c = jumboTex.image, g = c.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, 0, 288);
+  grad.addColorStop(0, '#1D4E89'); grad.addColorStop(1, '#0E2A4D');
+  g.fillStyle = grad; g.fillRect(0, 0, 512, 288);
+  g.strokeStyle = '#3BA4E8'; g.lineWidth = 10; g.strokeRect(5, 5, 502, 278);
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = '#FFE66B';
+  g.font = 'bold 96px "Lilita One", "Arial Black", sans-serif';
+  g.fillText(big, 256, small ? 118 : 144);
+  if (small) {
+    g.fillStyle = '#FFFFFF';
+    g.font = 'bold 44px "Lilita One", "Arial Black", sans-serif';
+    g.fillText(small, 256, 212);
+  }
+  jumboTex.needsUpdate = true;
+}
+
+// Speaker stacks flanking the launch deck
+(function createSpeakers() {
+  for (const side of [-1, 1]) {
+    const g = new THREE.Group();
+    const box = new THREE.Mesh(new THREE.BoxGeometry(1.15, 2.7, 1.15), toonMat(0x22303E));
+    box.position.y = 1.35;
+    box.castShadow = true;
+    g.add(box);
+    for (let i = 0; i < 2; i++) {
+      const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.18, 0.16, 12), toonMat(0x0E1820));
+      cone.rotation.x = Math.PI / 2;
+      cone.position.set(0, 0.85 + i * 1.1, -0.62);
+      g.add(cone);
+    }
+    g.position.set(side * 4.3, RAMP_HEIGHT, 3.2);
+    g.rotation.y = side * -0.25;
+    scene.add(g);
+  }
+})();
+
+// Searchlight beams sweeping over the launch area (pre-flight showbiz)
+const searchlights = [];
+(function createSearchlights() {
+  for (const side of [-1, 1]) {
+    const geo = new THREE.ConeGeometry(1.5, 17, 12, 1, true);
+    geo.translate(0, 8.5, 0); // pivot at the lamp
+    const beam = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+      color: 0xFFEDB8, transparent: true, opacity: 0.06,
+      blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
+    }));
+    beam.position.set(side * 3.4, RAMP_HEIGHT + 0.3, 0.4);
+    beam.renderOrder = 4;
+    scene.add(beam);
+    searchlights.push({ beam, side });
+    reflectExclude.push(beam);
+  }
+})();
+function updateSearchlights(time) {
+  const show = gameState === 'TITLE' || gameState === 'GARAGE' || gameState === 'READY' || gameState === 'AIMING' || gameState === 'LAUNCH';
+  for (const s of searchlights) {
+    s.beam.visible = show;
+    if (!show) continue;
+    s.beam.rotation.z = s.side * (0.45 + Math.sin(time * 0.9 + s.side) * 0.3);
+    s.beam.rotation.x = Math.sin(time * 0.7 + s.side * 2.1) * 0.22;
+  }
+}
+
 // ===== CONFETTI burst on launch (instanced) =====
 const CONFETTI_N = 90;
 let confettiMesh = null, confettiActive = false, confettiT = 0;
@@ -1673,148 +2480,318 @@ function updateFestival(time, dt) {
   updateBoats(time);
   updateConfetti(dt);
   updateBuoys(time);
+  updateStageFlags(time);
   const fl = window.__finishLineGroup;
   if (fl && fl.userData.banner) {
     fl.userData.banner.position.y = fl.userData.bobBase + Math.sin(time * 1.5) * 0.3;
   }
 }
 
-// ===== FOG =====
-// Fog disabled — transparent sky with CSS background
-// scene.fog = new THREE.Fog(0x87CEEB, 150, 900);
-
-// ===== BRIDGE / LAUNCH PLATFORM =====
+// ===== FLUGTAG LAUNCH STAGE (branded pier: runway, scaffold, skirts, flags) =====
 const rampGroup = new THREE.Group();
 scene.add(rampGroup);
+const stageFlags = [];
 
-// Bridge deck (spans across the river)
-const bridgeGeo = new THREE.BoxGeometry(RIVER_WIDTH + 10, 0.6, 5);
-const bridgeMesh = new THREE.Mesh(bridgeGeo, toonMat(0x888899));
-bridgeMesh.position.set(0, RAMP_HEIGHT - 0.3, -4);
-bridgeMesh.castShadow = true;
-bridgeMesh.receiveShadow = true;
-addOutline(bridgeMesh, 0.015);
-rampGroup.add(bridgeMesh);
+(function buildLaunchStage() {
+  const sRGB = t => { t.encoding = THREE.sRGBEncoding; return t; };
 
-// Bridge railings
-const railMat = toonMat(0x777788);
-for (let side = -1; side <= 1; side += 2) {
-  const railX = side * (RIVER_WIDTH / 2 + 4);
-  // Railing posts
-  for (let z = -6; z <= -2; z += 2) {
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.5, 6), railMat);
-    post.position.set(railX, RAMP_HEIGHT + 0.5, z);
-    rampGroup.add(post);
+  // --- Runway top: pale deck, red edge bands, dashed center line, FLUGTAG lettering ---
+  const deckCvs = document.createElement('canvas'); deckCvs.width = 512; deckCvs.height = 1024;
+  const deckTex = sRGB(new THREE.CanvasTexture(deckCvs));
+  deckTex.anisotropy = 4;
+  function drawRunway() {
+    const g = deckCvs.getContext('2d');
+    g.fillStyle = '#E9EFF4'; g.fillRect(0, 0, 512, 1024);
+    g.strokeStyle = 'rgba(22,58,95,0.08)'; g.lineWidth = 3;
+    for (let y = 64; y < 1024; y += 64) { g.beginPath(); g.moveTo(0, y); g.lineTo(512, y); g.stroke(); }
+    g.fillStyle = '#EE3B3B'; g.fillRect(0, 0, 34, 1024); g.fillRect(478, 0, 34, 1024);
+    g.fillStyle = '#FFFFFF'; g.fillRect(34, 0, 10, 1024); g.fillRect(468, 0, 10, 1024);
+    g.fillStyle = '#FFFFFF';
+    for (let y = 20; y < 1024; y += 130) g.fillRect(248, y, 16, 72);
+    g.save();
+    g.translate(256, 560); g.rotate(Math.PI / 2);
+    g.font = 'bold 118px "Lilita One", "Arial Black", sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineWidth = 14; g.strokeStyle = '#FFFFFF'; g.strokeText('FLUGTAG', 0, 0);
+    g.fillStyle = '#163A5F'; g.fillText('FLUGTAG', 0, 0);
+    g.restore();
+    deckTex.needsUpdate = true;
   }
-  // Top rail
-  const topRail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 6), railMat);
-  topRail.position.set(railX, RAMP_HEIGHT + 1.2, -4);
-  rampGroup.add(topRail);
-}
+  drawRunway();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawRunway);
 
-// Bridge support pillars in the water
-for (let x = -12; x <= 12; x += 8) {
-  const pillar = new THREE.Mesh(new THREE.BoxGeometry(1.2, RAMP_HEIGHT + 2, 1.2), toonMat(0x777788));
-  pillar.position.set(x, RAMP_HEIGHT / 2 - 1, -4);
-  pillar.castShadow = true;
-  addOutline(pillar, 0.015);
-  rampGroup.add(pillar);
-}
+  // --- Takeoff lip top: yellow/navy chevrons pointing at the drop ---
+  const chevTex = (function () {
+    const c = document.createElement('canvas'); c.width = 256; c.height = 256;
+    const g = c.getContext('2d');
+    g.fillStyle = '#FFC41F'; g.fillRect(0, 0, 256, 256);
+    g.fillStyle = '#163A5F';
+    for (let y = -64; y < 256; y += 128) {
+      g.beginPath();
+      g.moveTo(0, y); g.lineTo(128, y + 64); g.lineTo(256, y);
+      g.lineTo(256, y + 44); g.lineTo(128, y + 108); g.lineTo(0, y + 44);
+      g.closePath(); g.fill();
+    }
+    const t = sRGB(new THREE.CanvasTexture(c));
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    return t;
+  })();
 
-// Launch platform (extends from bridge over the water)
-const deckGeo = new THREE.BoxGeometry(6, 0.5, 10);
-const deckMesh = new THREE.Mesh(deckGeo, toonMat(0xB88855));
-deckMesh.position.set(0, RAMP_HEIGHT - 0.25, 1);
-deckMesh.castShadow = true;
-deckMesh.receiveShadow = true;
-addOutline(deckMesh, 0.02);
-rampGroup.add(deckMesh);
+  // --- Skirt panels: navy/white event stripes ---
+  const skirtTex = (function () {
+    const c = document.createElement('canvas'); c.width = 128; c.height = 128;
+    const g = c.getContext('2d');
+    g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, 128, 128);
+    g.fillStyle = '#1D7DB8'; g.fillRect(0, 0, 64, 128);
+    const t = sRGB(new THREE.CanvasTexture(c));
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(5, 1);
+    return t;
+  })();
 
-// Ramp surface (angled, red)
-const rampGeo = new THREE.BoxGeometry(5, 0.3, RAMP_LENGTH);
-const rampMesh = new THREE.Mesh(rampGeo, toonMat(0xCC4444));
-rampMesh.position.set(0, RAMP_HEIGHT + RAMP_LENGTH / 2 * Math.sin(RAMP_ANGLE) * 0.5, 2 + RAMP_LENGTH / 2 * Math.cos(RAMP_ANGLE) * 0.5);
-rampMesh.rotation.x = -RAMP_ANGLE;
-rampMesh.castShadow = true;
-addOutline(rampMesh, 0.02);
-rampGroup.add(rampMesh);
-
-// Platform support columns under launch deck
-for (let x = -2; x <= 2; x += 4) {
-  for (let z = -2; z <= 4; z += 3) {
-    const col = new THREE.Mesh(new THREE.BoxGeometry(0.5, RAMP_HEIGHT, 0.5), toonMat(0x8A6633));
-    col.position.set(x, RAMP_HEIGHT / 2, z);
-    col.castShadow = true;
-    addOutline(col, 0.015);
-    rampGroup.add(col);
+  // --- Front banner skirt under the lip: FLUGTAG on navy ---
+  const bannerCvs = document.createElement('canvas'); bannerCvs.width = 1024; bannerCvs.height = 192;
+  const bannerSkirtTex = sRGB(new THREE.CanvasTexture(bannerCvs));
+  function drawSkirtBanner() {
+    const g = bannerCvs.getContext('2d');
+    g.fillStyle = '#163A5F'; g.fillRect(0, 0, 1024, 192);
+    g.fillStyle = '#EE3B3B';
+    g.beginPath(); g.moveTo(0, 0); g.lineTo(190, 0); g.lineTo(90, 192); g.lineTo(0, 192); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(1024, 0); g.lineTo(834, 0); g.lineTo(934, 192); g.lineTo(1024, 192); g.closePath(); g.fill();
+    g.font = 'bold 108px "Lilita One", "Arial Black", sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = '#FFFFFF'; g.fillText('FLUGTAG', 512, 102);
+    bannerSkirtTex.needsUpdate = true;
   }
-}
+  drawSkirtBanner();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawSkirtBanner);
 
+  const toonMap = (map) => new THREE.MeshToonMaterial({ map, gradientMap: gradientMap3 });
+  const plain = (c) => toonMat(c);
 
-// Slingshot posts
-const postGeo = new THREE.CylinderGeometry(0.15, 0.15, 3, 8);
-const postMat = toonMat(0x888899);
-const postL = new THREE.Mesh(postGeo, postMat);
-postL.position.set(-1.5, RAMP_HEIGHT + 1.5, 1);
-addOutline(postL, 0.02);
-rampGroup.add(postL);
-const postR = postL.clone();
-postR.position.x = 1.5;
-rampGroup.add(postR);
+  // --- Stage deck (z -3..5, top at RAMP_HEIGHT) ---
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(7, 0.7, 8), [
+    toonMap(skirtTex), toonMap(skirtTex),          // ±x skirts
+    toonMap(deckTex), plain(0x6E8090),             // top runway / bottom
+    toonMap(bannerSkirtTex), toonMap(skirtTex),    // +z front banner / -z back
+  ]);
+  deck.position.set(0, RAMP_HEIGHT - 0.35, 1);
+  deck.castShadow = true; deck.receiveShadow = true;
+  rampGroup.add(deck);
 
-// Yellow caution stripes at ramp edge
-const stripeGeo = new THREE.BoxGeometry(5, 0.05, 0.3);
-const stripeMat = toonMat(0xFFCC00);
-for (let i = 0; i < 3; i++) {
-  const stripe = new THREE.Mesh(stripeGeo, stripeMat);
-  stripe.position.set(0, RAMP_HEIGHT + 0.3, 5.5 + i * 0.4);
-  stripe.rotation.x = -RAMP_ANGLE;
-  rampGroup.add(stripe);
+  // --- Takeoff lip (angled, chevron top, banner face on the drop edge) ---
+  const lip = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.45, 4.6), [
+    toonMap(skirtTex), toonMap(skirtTex),
+    toonMap(chevTex), plain(0x6E8090),
+    toonMap(bannerSkirtTex), plain(0xD8E2EC),
+  ]);
+  lip.position.set(0, RAMP_HEIGHT - 0.225 + (4.6 / 2) * Math.sin(RAMP_ANGLE), 5 + (4.6 / 2) * Math.cos(RAMP_ANGLE));
+  lip.rotation.x = -RAMP_ANGLE;
+  lip.castShadow = true; lip.receiveShadow = true;
+  rampGroup.add(lip);
+
+  // Big event banner hanging off the drop edge (the hero shot from the water)
+  const dropBanner = new THREE.Mesh(new THREE.PlaneGeometry(6.0, 1.9), toonMap(bannerSkirtTex));
+  dropBanner.position.set(0, RAMP_HEIGHT - 0.9, 9.42);
+  dropBanner.castShadow = true;
+  rampGroup.add(dropBanner);
+
+  // --- Scaffold truss under the pier (instanced steel) ---
+  (function buildScaffold() {
+    const members = [];
+    for (const x of [-3, 0, 3]) {
+      for (const z of [-2.4, 1, 4.4]) members.push({ p: [x, (RAMP_HEIGHT - 0.7) / 2, z], s: [1, RAMP_HEIGHT - 0.7, 1], r: [0, 0, 0] });
+    }
+    for (const x of [-2.6, 2.6]) members.push({ p: [x, (RAMP_HEIGHT - 0.2) / 2, 7.4], s: [1, RAMP_HEIGHT - 0.2, 1], r: [0, 0, 0] });
+    // cross-braces on the visible side faces
+    for (const x of [-3, 3]) {
+      for (let i = 0; i < 2; i++) {
+        members.push({ p: [x, 3 + i * 4.5, 1], s: [1, 7.8, 1], r: [Math.PI / 2.55 * (i % 2 ? 1 : -1), 0, 0] });
+      }
+    }
+    for (const z of [-2.4, 4.4]) {
+      members.push({ p: [0, 5.5, z], s: [1, 8.2, 1], r: [0, 0, Math.PI / 2.45] });
+      members.push({ p: [0, 5.5, z], s: [1, 8.2, 1], r: [0, 0, -Math.PI / 2.45] });
+    }
+    const geo = new THREE.CylinderGeometry(0.09, 0.09, 1, 8);
+    const truss = new THREE.InstancedMesh(geo, toonMat(0x5A7186), members.length);
+    const d = new THREE.Object3D();
+    members.forEach((m, i) => {
+      d.position.set(m.p[0], m.p[1], m.p[2]);
+      d.rotation.set(m.r[0], 0, m.r[2]);
+      d.scale.set(1, m.s[1], 1);
+      d.updateMatrix();
+      truss.setMatrixAt(i, d.matrix);
+    });
+    truss.castShadow = true;
+    rampGroup.add(truss);
+  })();
+
+  // --- Side railings (kept clear of the runway) ---
+  (function buildRails() {
+    const posts = [];
+    for (const side of [-1, 1]) for (let z = -2.7; z <= 4.5; z += 1.2) posts.push({ x: side * 3.32, z });
+    const postMesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.05, 0.05, 1.05, 6), toonMat(0x163A5F), posts.length);
+    const d = new THREE.Object3D();
+    posts.forEach((p, i) => {
+      d.position.set(p.x, RAMP_HEIGHT + 0.52, p.z);
+      d.rotation.set(0, 0, 0); d.scale.set(1, 1, 1);
+      d.updateMatrix();
+      postMesh.setMatrixAt(i, d.matrix);
+    });
+    rampGroup.add(postMesh);
+    for (const side of [-1, 1]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 7.4), toonMat(0xF6FAFC));
+      rail.position.set(side * 3.32, RAMP_HEIGHT + 1.05, 0.9);
+      rampGroup.add(rail);
+    }
+  })();
+
+  // --- Slingshot pylons: candy-striped with gold tops (band anchors unchanged) ---
+  (function buildPylons() {
+    const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+    const g = c.getContext('2d');
+    g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, 64, 64);
+    g.fillStyle = '#EE3B3B'; g.fillRect(0, 0, 64, 32);
+    const tex = sRGB(new THREE.CanvasTexture(c));
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(1, 5);
+    for (const x of [-1.5, 1.5]) {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.19, 3.2, 10), toonMap(tex));
+      pole.position.set(x, RAMP_HEIGHT + 1.6, 1);
+      pole.castShadow = true;
+      rampGroup.add(pole);
+      const knob = new THREE.Mesh(new THREE.SphereGeometry(0.27, 12, 10), toonMat(0xFFC41F));
+      knob.position.set(x, RAMP_HEIGHT + 3.3, 1);
+      rampGroup.add(knob);
+    }
+  })();
+
+  // --- Corner flags (waved in updateFestival) ---
+  (function buildCornerFlags() {
+    const spots = [
+      [-3.32, -2.9], [3.32, -2.9], [-2.95, 7.3], [2.95, 7.3],
+    ];
+    const cols = [0xEE3B3B, 0xFFC41F, 0x63C93B, 0x3BA4E8];
+    spots.forEach(([x, z], i) => {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 1.7, 6), toonMat(0xF6FAFC));
+      pole.position.set(x, RAMP_HEIGHT + 0.85, z);
+      rampGroup.add(pole);
+      const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.78, 0.5), new THREE.MeshBasicMaterial({
+        color: cols[i % cols.length], side: THREE.DoubleSide,
+      }));
+      flag.geometry.translate(0.39, 0, 0);
+      flag.position.set(x, RAMP_HEIGHT + 1.45, z);
+      rampGroup.add(flag);
+      stageFlags.push({ flag, phase: i * 1.4 });
+    });
+  })();
+
+  // --- Stone bridge behind the stage (tucked lower so the pier reads on top) ---
+  const bridge = new THREE.Mesh(new THREE.BoxGeometry(RIVER_WIDTH + 10, 0.8, 5), toonMat(0xD9CCA9));
+  bridge.position.set(0, RAMP_HEIGHT - 0.58, -4.6);
+  bridge.castShadow = true; bridge.receiveShadow = true;
+  addOutline(bridge, 0.012);
+  rampGroup.add(bridge);
+  const trim = new THREE.Mesh(new THREE.BoxGeometry(RIVER_WIDTH + 10.2, 0.16, 5.2), toonMat(0xEFE6CC));
+  trim.position.set(0, RAMP_HEIGHT - 0.12, -4.6);
+  rampGroup.add(trim);
+  for (let x = -12; x <= 12; x += 8) {
+    const pillar = new THREE.Mesh(new THREE.BoxGeometry(1.4, RAMP_HEIGHT + 2, 1.4), toonMat(0xCFC2A0));
+    pillar.position.set(x, RAMP_HEIGHT / 2 - 1, -4.6);
+    pillar.castShadow = true;
+    addOutline(pillar, 0.012);
+    rampGroup.add(pillar);
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.3, 1.7), toonMat(0xEFE6CC));
+    cap.position.set(x, RAMP_HEIGHT - 0.95, -4.6);
+    rampGroup.add(cap);
+  }
+  const bridgeRail = toonMat(0xF6FAFC);
+  for (const side of [-1, 1]) {
+    for (let z = -6.4; z <= -2.8; z += 1.8) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.3, 6), bridgeRail);
+      post.position.set(side * (RIVER_WIDTH / 2 + 4), RAMP_HEIGHT + 0.5, z);
+      rampGroup.add(post);
+    }
+    const top = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 4.4), bridgeRail);
+    top.position.set(side * (RIVER_WIDTH / 2 + 4), RAMP_HEIGHT + 1.15, -4.6);
+    rampGroup.add(top);
+  }
+})();
+function updateStageFlags(time) {
+  for (const f of stageFlags) {
+    f.flag.rotation.y = Math.sin(time * 2.4 + f.phase) * 0.5 - 0.3;
+  }
+  // Fade the start arch out completely BEFORE the chase camera reaches the
+  // tube — a half-faded torus at the near plane smears across the whole sky.
+  if (launchArch) {
+    const d = launchArch.position.z - camera.position.z;
+    const o = Math.max(0, Math.min(1, (d - 10) / 5));
+    launchArch.material.opacity = o;
+    launchArch.visible = o > 0.02;
+  }
 }
 
 
 // ===== CLOUDS (removed — background image has clouds) =====
 
-// ===== DISTANCE BUOYS (instanced, bobbing on the waves) =====
-let buoyBase = null, buoyTop = null;
+// ===== COURSE BUOYS (inflatable regatta markers: float ring, striped body, cap) =====
+let buoyBody = null;
+const buoyScale = new Float32Array(BUOY_COUNT);
+const buoyX = new Float32Array(BUOY_COUNT);
 (function buildBuoys() {
-  const baseGeo = new THREE.CylinderGeometry(0.3, 0.4, 1.0, 8); baseGeo.translate(0, 0.5, 0);
-  const topGeo = new THREE.SphereGeometry(0.25, 8, 8); topGeo.translate(0, 1.2, 0);
-  buoyBase = new THREE.InstancedMesh(
-    baseGeo,
-    new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: gradientMap3 }),
-    BUOY_COUNT
-  );
-  buoyTop = new THREE.InstancedMesh(topGeo, toonMat(0xFFFFFF), BUOY_COUNT);
-  buoyTop.instanceMatrix = buoyBase.instanceMatrix;
-  const red = new THREE.Color(0xFF4444), yellow = new THREE.Color(0xFFDD44);
+  const mk = () => new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: gradientMap3 });
+
+  const ringGeo = new THREE.TorusGeometry(0.62, 0.20, 10, 20);
+  ringGeo.rotateX(Math.PI / 2); ringGeo.translate(0, 0.20, 0);
+  const bodyGeo = new THREE.SphereGeometry(0.55, 16, 14);
+  bodyGeo.scale(1, 1.2, 1); bodyGeo.translate(0, 0.74, 0);
+  const bandGeo = new THREE.CylinderGeometry(0.58, 0.58, 0.20, 16);
+  bandGeo.translate(0, 0.80, 0);
+  const capGeo = new THREE.ConeGeometry(0.17, 0.55, 10);
+  capGeo.translate(0, 1.62, 0);
+
+  buoyBody = new THREE.InstancedMesh(bodyGeo, mk(), BUOY_COUNT);
+  const ring = new THREE.InstancedMesh(ringGeo, mk(), BUOY_COUNT);
+  const band = new THREE.InstancedMesh(bandGeo, toonMat(0xF6FAFC), BUOY_COUNT);
+  const cap = new THREE.InstancedMesh(capGeo, toonMat(0x163A5F), BUOY_COUNT);
+  // One buoy = one matrix: all parts ride the body's buffer
+  ring.instanceMatrix = buoyBody.instanceMatrix;
+  band.instanceMatrix = buoyBody.instanceMatrix;
+  cap.instanceMatrix = buoyBody.instanceMatrix;
+
+  const red = new THREE.Color(0xE8483F), yellow = new THREE.Color(0xFFC41F);
+  const redDark = red.clone().multiplyScalar(0.82), yellowDark = yellow.clone().multiplyScalar(0.82);
   const dummy = new THREE.Object3D();
   for (let i = 0; i < BUOY_COUNT; i++) {
-    const dist = (i + 1) * BUOY_SPACING;
-    dummy.position.set(3, 0, dist);
+    buoyScale[i] = 0.95 + Math.random() * 0.35;
+    buoyX[i] = (i % 2 === 0 ? 1 : -1) * 3.4; // markers frame the flight channel
+    dummy.position.set(buoyX[i], 0, (i + 1) * BUOY_SPACING);
     dummy.rotation.set(0, 0, 0);
-    dummy.scale.setScalar(1);
+    dummy.scale.setScalar(buoyScale[i]);
     dummy.updateMatrix();
-    buoyBase.setMatrixAt(i, dummy.matrix);
-    buoyBase.setColorAt(i, i % 2 === 0 ? red : yellow);
+    buoyBody.setMatrixAt(i, dummy.matrix);
+    buoyBody.setColorAt(i, i % 2 === 0 ? red : yellow);
+    ring.setColorAt(i, i % 2 === 0 ? redDark : yellowDark);
   }
-  buoyBase.frustumCulled = false;
-  buoyTop.frustumCulled = false;
-  scene.add(buoyBase);
-  scene.add(buoyTop);
+  for (const m of [buoyBody, ring, band, cap]) {
+    m.castShadow = true;
+    m.frustumCulled = false;
+    scene.add(m);
+  }
 })();
 const buoyDummy = new THREE.Object3D();
 function updateBuoys(time) {
-  if (!buoyBase) return;
+  if (!buoyBody) return;
   for (let i = 0; i < BUOY_COUNT; i++) {
     const z = (i + 1) * BUOY_SPACING;
-    buoyDummy.position.set(3, waveY(3, z, time) * 0.85, z);
+    buoyDummy.position.set(buoyX[i], waveY(buoyX[i], z, time) * 0.85, z);
     buoyDummy.rotation.set(Math.sin(time * 1.1 + i * 1.7) * 0.07, 0, Math.sin(time * 1.3 + i) * 0.09);
-    buoyDummy.scale.setScalar(1);
+    buoyDummy.scale.setScalar(buoyScale[i]);
     buoyDummy.updateMatrix();
-    buoyBase.setMatrixAt(i, buoyDummy.matrix);
+    buoyBody.setMatrixAt(i, buoyDummy.matrix);
   }
-  buoyBase.instanceMatrix.needsUpdate = true;
+  buoyBody.instanceMatrix.needsUpdate = true;
 }
 
 // ===== CRAFT (complete GLB skins) =====
@@ -2238,6 +3215,17 @@ function setState(state) {
     }
 
   }
+
+  // Jumbotron reacts to the event state
+  switch (state) {
+    case 'TITLE':   drawJumbo('FLUGTAG', 'SALZBURG'); break;
+    case 'GARAGE':  drawJumbo('PICK YOUR', 'CRAFT!'); break;
+    case 'READY':   drawJumbo('DRAG TO', 'LAUNCH!'); break;
+    case 'LAUNCH':  drawJumbo('GO!'); break;
+    case 'SPLASH':  drawJumbo('SPLASH!'); break;
+    case 'RESULTS': drawJumbo(Math.floor(flightDistance) + 'm',
+      flightDistance >= save.bestDistance ? 'NEW RECORD!' : 'NICE FLIGHT!'); break;
+  }
 }
 
 // ===== GARAGE RENDERING =====
@@ -2586,10 +3574,11 @@ function updateFlightPhysics(dt) {
   craftGroup.rotation.x = -pitch;
 
 
-  // Wind trail
+  // Wind trail + water spray when skimming low
   trailTimer += dt;
   if (trailTimer > 0.08 && curSpeed > 3) {
     spawnTrail(pos.x, pos.y, pos.z - 1.5);
+    if (pos.y < 2.4) spawnTrail(pos.x + (Math.random() - 0.5) * 0.8, 0.25, pos.z - 0.8);
     trailTimer = 0;
   }
 
@@ -2690,16 +3679,26 @@ function gameLoop(timestamp) {
   updateWater(time, dt);
   updateSplashRings(dt);
   updateFestival(time, dt);
+  updateSky();
+  updateClouds(time);
+  updateBirds(time);
+  updateSearchlights(time);
 
-  // Update sun shadow to follow craft during flight
-  if (gameState === 'FLIGHT' || gameState === 'LAUNCH') {
-    sunLight.position.set(pos.x + 40, 80, pos.z + 30);
-    sunLight.target.position.set(pos.x, pos.y, pos.z);
-    sunLight.target.updateMatrixWorld();
+  // Live distance on the jumbotron during flight (throttled)
+  if (gameState === 'FLIGHT' && time - lastJumboTick > 0.25) {
+    drawJumbo(Math.floor(flightDistance) + 'm');
+    lastJumboTick = time;
   }
 
-  renderer.render(scene, camera);
+  // Sun + shadow frustum always track the craft
+  const cp = craftGroup.position;
+  sunLight.position.set(cp.x + 40, 80, cp.z + 30);
+  sunLight.target.position.set(cp.x, cp.y, cp.z);
+  sunLight.target.updateMatrixWorld();
+
+  composer.render();
 }
+let lastJumboTick = 0;
 
 // ===== INIT =====
 loadSave();
