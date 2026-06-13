@@ -919,136 +919,29 @@ const sunDir = new THREE.Vector3(0.45, 0.62, 0.64).normalize();
   skyGroup.add(sun); skyGroup.add(halo);
 })();
 
-// Salzburg panorama as a flat far backdrop (undistorted), with procedural
-// low-poly scenery filling the sides on wide screens.
+// Salzburg panorama: screen-locked like the original CSS background —
+// always spans the full viewport width at its distance, height follows the
+// image's own aspect ratio (never stretched), bottom pinned to the horizon.
+let panoPlane = null;
+let panoAspect = 4.4; // corrected from the real image once loaded
+const PANO_DIST = 2350;
+const PANO_CROP = 0.78; // drop the PNG's baked water band
 (function createPanoramaBackdrop() {
-  const tex = new THREE.TextureLoader().load('Cartoon_panoramic_skyline_202604022029.png');
+  const tex = new THREE.TextureLoader().load('Cartoon_panoramic_skyline_202604022029.png', (t) => {
+    panoAspect = (t.image.width / (t.image.height * PANO_CROP));
+  });
   tex.encoding = THREE.sRGBEncoding;
   tex.anisotropy = 4;
-  // Crop the PNG's baked water band off the bottom
-  tex.repeat.set(1, 0.78);
+  tex.repeat.set(1, PANO_CROP);
   tex.offset.set(0, 0.22);
-  const plane = new THREE.Mesh(
-    new THREE.PlaneGeometry(3400, 680),
+  panoPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(1, 1),
     new THREE.MeshBasicMaterial({ map: tex, fog: false, depthWrite: false })
   );
-  plane.position.set(0, 265, 2350);
-  plane.rotation.y = Math.PI; // face the player
-  plane.renderOrder = -8;
-  skyGroup.add(plane);
-})();
-
-// Painted-style side scenery: snowy peaks, hills, and pastel building clusters
-// continue the skyline beyond the panorama's edges (drawn before it, so the
-// PNG wins where they overlap).
-(function createBackdropSides() {
-  const flat = (color, extra) => Object.assign(
-    new THREE.MeshBasicMaterial({ color, fog: false, depthWrite: false }), extra || {});
-  const place = [];
-
-  // Unit cone with base at y=0 — scaled per instance
-  const coneGeo = new THREE.ConeGeometry(1, 1, 6); coneGeo.translate(0, 0.5, 0);
-  const peaks = [];
-  for (const side of [-1, 1]) {
-    let x = 1450;
-    while (x < 3100) {
-      const r = 220 + Math.random() * 200;
-      const h = 280 + Math.random() * 260;
-      peaks.push({ x: side * (x + r * 0.3), z: 2450 + Math.random() * 220, r, h, rot: Math.random() * Math.PI });
-      x += r * (1.1 + Math.random() * 0.5);
-    }
-  }
-  const rock = new THREE.InstancedMesh(coneGeo, flat(0x93A9C6), peaks.length);
-  const snow = new THREE.InstancedMesh(coneGeo, flat(0xF2F7FB), peaks.length);
-  const d = new THREE.Object3D();
-  peaks.forEach((p, i) => {
-    d.position.set(p.x, -30, p.z);
-    d.rotation.set(0, p.rot, 0);
-    d.scale.set(p.r, p.h, p.r * (0.75 + Math.random() * 0.4));
-    d.updateMatrix();
-    rock.setMatrixAt(i, d.matrix);
-    // Snow cap: flush-fitting smaller cone on the upper part of the peak
-    d.position.y = -30 + p.h * 0.55;
-    d.scale.set(p.r * 0.47, p.h * 0.47, p.r * 0.47);
-    d.updateMatrix();
-    snow.setMatrixAt(i, d.matrix);
-  });
-  place.push(rock, snow);
-
-  // Rolling green hills in front of the peaks
-  const hillGeo = new THREE.SphereGeometry(1, 10, 7);
-  const hillSpots = [];
-  for (const side of [-1, 1]) {
-    for (let k = 0; k < 5; k++) {
-      hillSpots.push({
-        x: side * (1500 + k * 330 + Math.random() * 140),
-        z: 2240 + Math.random() * 120,
-        rx: 280 + Math.random() * 160, ry: 95 + Math.random() * 75,
-      });
-    }
-  }
-  const hills = new THREE.InstancedMesh(
-    hillGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, depthWrite: false }), hillSpots.length
-  );
-  const greens = [new THREE.Color(0x74B257), new THREE.Color(0x88C166), new THREE.Color(0x67A14C)];
-  hillSpots.forEach((p, i) => {
-    d.position.set(p.x, 0, p.z);
-    d.rotation.set(0, 0, 0);
-    d.scale.set(p.rx, p.ry, p.rx * 0.8);
-    d.updateMatrix();
-    hills.setMatrixAt(i, d.matrix);
-    hills.setColorAt(i, greens[i % greens.length]);
-  });
-  place.push(hills);
-
-  // Distant pastel building clusters + church towers on the hills
-  const boxGeo = new THREE.BoxGeometry(1, 1, 1); boxGeo.translate(0, 0.5, 0);
-  const lots = [];
-  for (const side of [-1, 1]) {
-    for (let c = 0; c < 2; c++) {
-      const cx = side * (1680 + c * 520 + Math.random() * 160);
-      for (let b = 0; b < 8; b++) {
-        lots.push({
-          x: cx + (Math.random() - 0.5) * 360,
-          z: 2160 + Math.random() * 110,
-          w: 46 + Math.random() * 60, h: 52 + Math.random() * 90,
-        });
-      }
-    }
-  }
-  const town = new THREE.InstancedMesh(
-    boxGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, depthWrite: false }), lots.length
-  );
-  const pastels = [0xF2D8A7, 0xE9B8BC, 0xF6F0E4, 0xCDE0CB, 0xD9C7E8].map(c => new THREE.Color(c));
-  lots.forEach((p, i) => {
-    d.position.set(p.x, 28, p.z); // perched on the hill band
-    d.rotation.set(0, (Math.random() - 0.5) * 0.5, 0);
-    d.scale.set(p.w, p.h, p.w * 0.9);
-    d.updateMatrix();
-    town.setMatrixAt(i, d.matrix);
-    town.setColorAt(i, pastels[i % pastels.length]);
-  });
-  place.push(town);
-
-  // A couple of church towers with patina domes per side
-  for (const side of [-1, 1]) {
-    for (let t = 0; t < 2; t++) {
-      const tx = side * (1750 + t * 560 + Math.random() * 120), tz = 2170;
-      const tower = new THREE.Mesh(new THREE.BoxGeometry(26, 130, 26), flat(0xF6F0E4));
-      tower.position.set(tx, 95, tz);
-      const dome = new THREE.Mesh(new THREE.SphereGeometry(20, 10, 8), flat(0x4F8F7B));
-      dome.position.set(tx, 168, tz); dome.scale.set(1, 1.25, 1);
-      const tip = new THREE.Mesh(new THREE.ConeGeometry(7, 22, 8), flat(0x4F8F7B));
-      tip.position.set(tx, 200, tz);
-      place.push(tower, dome, tip);
-    }
-  }
-
-  for (const m of place) {
-    m.renderOrder = -9; // behind the panorama plane
-    if (m.frustumCulled !== undefined) m.frustumCulled = false;
-    skyGroup.add(m);
-  }
+  panoPlane.position.set(0, 0, PANO_DIST);
+  panoPlane.rotation.y = Math.PI; // face the player
+  panoPlane.renderOrder = -8;
+  skyGroup.add(panoPlane);
 })();
 
 // (Haze ridges removed — at flight altitude the transparent cylinder walls read
@@ -1142,8 +1035,18 @@ function updateBirds(time) {
 }
 
 // Sky follows the camera down the course so the dome never ends
+const PANO_BOTTOM_Y = 12; // world height where the panorama's base sits (far bank line)
 function updateSky() {
   skyGroup.position.z = camera.position.z;
+  // Screen-lock the panorama: full viewport width at its distance, height from
+  // the image ratio (never stretched), base pinned to the horizon band.
+  if (panoPlane) {
+    const visH = 2 * PANO_DIST * Math.tan((camera.fov * DEG2RAD) / 2);
+    const w = visH * camera.aspect * 1.06; // slight overscan hides edges on tilt
+    const h = w / panoAspect;
+    panoPlane.scale.set(w, h, 1);
+    panoPlane.position.y = PANO_BOTTOM_Y + h * 0.5;
+  }
 }
 
 // ===== RIVER WATER (stylized premium: scrolling diffuse + normal map + foam) =====
@@ -1572,21 +1475,30 @@ createBank(1);
   const CITY_FRONT = RIVER_WIDTH / 2 + 13;   // building faces start here
   const CATHEDRAL_ZONES = [{ side: -1, z: 505 }, { side: 1, z: 905 }];
 
-  // --- Cobbled riverfront street along both banks ---
+  // --- Cobbled riverfront street along both banks (warm Salzburg setts) ---
   const cobbleTex = (function () {
-    const c = document.createElement('canvas'); c.width = 128; c.height = 128;
+    const c = document.createElement('canvas'); c.width = 256; c.height = 256;
     const g = c.getContext('2d');
-    g.fillStyle = '#CBC5BC'; g.fillRect(0, 0, 128, 128);
-    g.strokeStyle = '#B3ACA2'; g.lineWidth = 3;
-    for (let row = 0; row < 8; row++) {
+    g.fillStyle = '#BCAE97'; g.fillRect(0, 0, 256, 256); // mortar base
+    const tones = ['#CFC3AC', '#C4B79E', '#B8AB91', '#D6CCB6', '#AEA086'];
+    for (let row = 0; row < 16; row++) {
       const y = row * 16;
-      g.beginPath(); g.moveTo(0, y); g.lineTo(128, y); g.stroke();
-      const off = (row % 2) * 16;
-      for (let x = off; x <= 128; x += 32) { g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + 16); g.stroke(); }
+      const off = (row % 2) * 8;
+      for (let x = -8; x <= 256; x += 16) {
+        const cx = x + off + (Math.random() - 0.5) * 2;
+        const cy = y + (Math.random() - 0.5) * 2;
+        g.fillStyle = tones[(Math.random() * tones.length) | 0];
+        g.beginPath();
+        g.ellipse(cx + 7, cy + 8, 7, 7.4, 0, 0, Math.PI * 2);
+        g.fill();
+        // subtle top-light sheen on each stone
+        g.fillStyle = 'rgba(255,255,255,0.10)';
+        g.beginPath(); g.ellipse(cx + 5.6, cy + 6, 3.0, 2.6, 0, 0, Math.PI * 2); g.fill();
+      }
     }
     const t = sRGB(new THREE.CanvasTexture(c));
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.repeat.set(2, 220);
+    t.repeat.set(3, 300);
     return t;
   })();
   for (const side of [-1, 1]) {
@@ -1601,34 +1513,103 @@ createBank(1);
 
   // --- Getreidegasse-style townhouse facades (windows + shop fronts baked) ---
   function facadeTexture(base, awning) {
-    const c = document.createElement('canvas'); c.width = 256; c.height = 384;
+    const W = 512, H = 768;
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
     const g = c.getContext('2d');
-    g.fillStyle = base; g.fillRect(0, 0, 256, 384);
-    // upper floors: 3 rows x 4 windows (canvas bottom = building bottom, so rows sit high)
-    for (let row = 0; row < 3; row++) {
-      for (let col = 0; col < 4; col++) {
-        const x = 22 + col * 58, y = 26 + row * 86;
-        g.fillStyle = '#FFFFFF'; g.fillRect(x - 4, y - 4, 36, 52);
-        g.fillStyle = '#8FBFD9'; g.fillRect(x, y, 28, 44);
-        g.strokeStyle = '#FFFFFF'; g.lineWidth = 3;
-        g.beginPath(); g.moveTo(x + 14, y); g.lineTo(x + 14, y + 44); g.moveTo(x, y + 22); g.lineTo(x + 28, y + 22); g.stroke();
-        g.fillStyle = '#C9554A'; g.fillRect(x - 5, y + 44, 38, 8);
+    const shade = (hex, f) => {
+      const n = parseInt(hex.slice(1), 16);
+      const r = Math.min(255, Math.max(0, ((n >> 16) & 255) * f));
+      const gr = Math.min(255, Math.max(0, ((n >> 8) & 255) * f));
+      const b = Math.min(255, Math.max(0, (n & 255) * f));
+      return `rgb(${r | 0},${gr | 0},${b | 0})`;
+    };
+    // Plaster with soft vertical lighting + faint weathering
+    const grd = g.createLinearGradient(0, 0, W, 0);
+    grd.addColorStop(0, shade(base, 0.9)); grd.addColorStop(0.5, base); grd.addColorStop(1, shade(base, 0.86));
+    g.fillStyle = grd; g.fillRect(0, 0, W, H);
+    g.fillStyle = 'rgba(255,255,255,0.05)';
+    for (let i = 0; i < 40; i++) g.fillRect(Math.random() * W, Math.random() * H, 2, 14 + Math.random() * 40);
+
+    const trim = shade(base, 0.72);   // window-surround / string-course color
+    const trimLt = '#FBF6EC';
+    const glass = '#7FB4D6', glassHi = '#A9D2E8';
+    // 4 upper floors x 4 bays of tall double-hung windows with pediments
+    const cols = 4, floors = 4;
+    const colW = W / cols;
+    const winW = 58, winH = 96;
+    for (let f = 0; f < floors; f++) {
+      const fy = 70 + f * 150;
+      // string course between floors
+      g.fillStyle = trim; g.fillRect(0, fy - 22, W, 7);
+      g.fillStyle = 'rgba(0,0,0,0.06)'; g.fillRect(0, fy - 15, W, 3);
+      for (let col = 0; col < cols; col++) {
+        const x = col * colW + (colW - winW) / 2;
+        // surround
+        g.fillStyle = trimLt; g.fillRect(x - 7, fy - 7, winW + 14, winH + 14);
+        g.fillStyle = trim; g.fillRect(x - 7, fy - 7, winW + 14, 5);
+        // pediment (alternating triangular / flat by floor)
+        g.fillStyle = trimLt;
+        if (f % 2 === 0) {
+          g.beginPath(); g.moveTo(x - 10, fy - 9); g.lineTo(x + winW / 2, fy - 26); g.lineTo(x + winW + 10, fy - 9); g.closePath(); g.fill();
+        } else {
+          g.fillRect(x - 10, fy - 18, winW + 20, 9);
+        }
+        // glass with crossbars + sheen
+        const gg = g.createLinearGradient(x, fy, x + winW, fy + winH);
+        gg.addColorStop(0, glassHi); gg.addColorStop(0.5, glass); gg.addColorStop(1, shade('#7FB4D6', 0.8));
+        g.fillStyle = gg; g.fillRect(x, fy, winW, winH);
+        g.strokeStyle = trimLt; g.lineWidth = 4;
+        g.strokeRect(x, fy, winW, winH);
+        g.beginPath(); g.moveTo(x + winW / 2, fy); g.lineTo(x + winW / 2, fy + winH);
+        g.moveTo(x, fy + winH / 2); g.lineTo(x + winW, fy + winH / 2); g.stroke();
+        // green shutters flanking
+        g.fillStyle = shade(awning, 0.95);
+        g.fillRect(x - 22, fy, 16, winH); g.fillRect(x + winW + 6, fy, 16, winH);
+        g.fillStyle = 'rgba(255,255,255,0.18)';
+        for (let s = 0; s < 6; s++) { g.fillRect(x - 22, fy + 6 + s * 16, 16, 7); g.fillRect(x + winW + 6, fy + 6 + s * 16, 16, 7); }
+        // flower box on the two middle floors
+        if (f >= 1 && f <= 2) {
+          g.fillStyle = '#6B4A33'; g.fillRect(x - 4, fy + winH, winW + 8, 12);
+          for (let fl = 0; fl < 5; fl++) {
+            g.fillStyle = ['#EE5B6E', '#F4C84B', '#FFFFFF', '#E0577A'][fl % 4];
+            g.beginPath(); g.arc(x + 6 + fl * 12, fy + winH + 4, 5, 0, Math.PI * 2); g.fill();
+          }
+        }
       }
     }
-    // ground floor: stone band, arched door, shop window with awning
-    g.fillStyle = 'rgba(60,45,30,0.12)'; g.fillRect(0, 290, 256, 94);
-    g.fillStyle = '#6B4A33';
-    g.beginPath(); g.arc(60, 340, 26, Math.PI, 0); g.fill(); g.fillRect(34, 340, 52, 44);
-    g.fillStyle = '#4A3526'; g.fillRect(42, 330, 36, 54);
-    g.fillStyle = '#FFFFFF'; g.fillRect(126, 318, 102, 50);
-    g.fillStyle = '#8FBFD9'; g.fillRect(132, 324, 90, 38);
-    g.fillStyle = awning;
-    for (let s = 0; s < 6; s++) { if (s % 2 === 0) g.fillRect(120 + s * 19, 296, 19, 20); }
-    g.fillStyle = '#FFFFFF';
-    for (let s = 0; s < 6; s++) { if (s % 2 === 1) g.fillRect(120 + s * 19, 296, 19, 20); }
-    // cornice
-    g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, 256, 9);
-    return sRGB(new THREE.CanvasTexture(c));
+    // Ornate cornice band at the very top
+    g.fillStyle = trimLt; g.fillRect(0, 0, W, 26);
+    g.fillStyle = trim; g.fillRect(0, 26, W, 8);
+    for (let x = 0; x < W; x += 26) { g.fillStyle = 'rgba(0,0,0,0.10)'; g.fillRect(x + 10, 14, 6, 12); }
+
+    // Ground floor: rusticated stone arcade with arched shopfronts + awnings + signboard
+    const gfY = H - 150;
+    g.fillStyle = shade(base, 0.8); g.fillRect(0, gfY, W, 150);
+    g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 2;
+    for (let y = gfY; y < H; y += 18) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+    for (let a = 0; a < 2; a++) {
+      const ax = 40 + a * 230, aw = 180;
+      // arch opening
+      g.fillStyle = '#3A2A1E';
+      g.beginPath(); g.moveTo(ax, H - 10); g.lineTo(ax, gfY + 54);
+      g.arc(ax + aw / 2, gfY + 54, aw / 2, Math.PI, 0); g.lineTo(ax + aw, H - 10); g.closePath(); g.fill();
+      // shop window inside
+      g.fillStyle = glassHi; g.fillRect(ax + 14, gfY + 58, aw - 28, 78);
+      g.strokeStyle = trimLt; g.lineWidth = 5; g.strokeRect(ax + 14, gfY + 58, aw - 28, 78);
+      // striped awning over the arch
+      for (let s = 0; s < 10; s++) {
+        g.fillStyle = s % 2 === 0 ? awning : '#FBF6EC';
+        g.fillRect(ax - 6 + s * (aw + 12) / 10, gfY + 30, (aw + 12) / 10, 22);
+      }
+      g.fillStyle = trim; g.fillRect(ax - 6, gfY + 24, aw + 12, 7);
+    }
+    // hanging shop sign
+    g.fillStyle = '#5A3A22'; g.fillRect(W / 2 - 4, gfY + 6, 8, 30);
+    g.fillStyle = awning; g.fillRect(W / 2 - 34, gfY + 30, 68, 26);
+    g.strokeStyle = '#FBF6EC'; g.lineWidth = 3; g.strokeRect(W / 2 - 34, gfY + 30, 68, 26);
+    const tex = sRGB(new THREE.CanvasTexture(c));
+    tex.anisotropy = 4;
+    return tex;
   }
   const palettes = [
     ['#F2D8A7', '#B5523C'], ['#E9B8BC', '#3F7E5B'], ['#CDE0CB', '#C2654A'],
@@ -1664,6 +1645,9 @@ createBank(1);
     lots.length
   );
   const roofTones = [new THREE.Color(0xA8534A), new THREE.Color(0x8E6A5A), new THREE.Color(0x7E8B96)];
+  // Dark eave overhang under each roof for crisp roofline depth
+  const eaveGeo = new THREE.BoxGeometry(7.5, 0.5, 7.0); eaveGeo.translate(0, 0.25, 0);
+  const eaves = new THREE.InstancedMesh(eaveGeo, toonMat(0x4A3A30), lots.length);
   const counts = palettes.map(() => 0);
   const dummy = new THREE.Object3D();
   lots.forEach((lot, i) => {
@@ -1675,14 +1659,20 @@ createBank(1);
     dummy.updateMatrix();
     const v = (Math.random() * bodyMeshes.length) | 0;
     bodyMeshes[v].setMatrixAt(counts[v]++, dummy.matrix);
+    // eave caps the building top
+    dummy.scale.set(1.02, 1, ws * 1.04);
+    dummy.position.y = 12 * hs - 0.5;
+    dummy.updateMatrix();
+    eaves.setMatrixAt(i, dummy.matrix);
     const rs = 0.85 + Math.random() * 0.3;
     dummy.scale.set(1, rs, ws);
-    dummy.position.y = 12 * (hs - rs); // roof base sits on the scaled body top
+    dummy.position.y = 12 * (hs - rs) + 0.2; // roof base sits on the eave
     dummy.updateMatrix();
     cityRoofs.setMatrixAt(i, dummy.matrix);
     cityRoofs.setColorAt(i, roofTones[i % roofTones.length]);
   });
   bodyMeshes.forEach((m, v) => { m.count = counts[v]; m.castShadow = true; m.frustumCulled = false; scene.add(m); });
+  eaves.frustumCulled = false; scene.add(eaves);
   cityRoofs.castShadow = true; cityRoofs.frustumCulled = false; scene.add(cityRoofs);
 
   // --- Street lamps along the river side of the street ---
@@ -2009,16 +1999,20 @@ const crowdFlagSpots = [];
   if (spots.length > 3600) spots.length = 3600;
   crowdN = spots.length;
 
-  const legsGeo = new THREE.BoxGeometry(0.30, 0.34, 0.20); legsGeo.translate(0, 0.17, 0);
-  const bodyGeo = new THREE.BoxGeometry(0.36, 0.55, 0.24); bodyGeo.translate(0, 0.62, 0);
-  const headGeo = new THREE.SphereGeometry(0.16, 6, 6);    headGeo.translate(0, 1.05, 0);
+  // Rounder, friendlier figures: tapered torso, smooth head, hair/hat cap
+  const legsGeo = new THREE.CylinderGeometry(0.15, 0.13, 0.36, 7); legsGeo.translate(0, 0.18, 0);
+  const bodyGeo = new THREE.CylinderGeometry(0.215, 0.15, 0.54, 9); bodyGeo.translate(0, 0.63, 0);
+  const headGeo = new THREE.SphereGeometry(0.16, 10, 8);  headGeo.translate(0, 1.05, 0);
+  const hairGeo = new THREE.SphereGeometry(0.165, 9, 7);  hairGeo.scale(1, 0.78, 1); hairGeo.translate(0, 1.12, 0);
   const mkMat = () => new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: gradientMap3 });
   const legs = new THREE.InstancedMesh(legsGeo, mkMat(), crowdN);
   crowdBody = new THREE.InstancedMesh(bodyGeo, mkMat(), crowdN);
   const heads = new THREE.InstancedMesh(headGeo, mkMat(), crowdN);
-  // One figure = one matrix: legs & heads reuse the body's instance buffer
+  const hair = new THREE.InstancedMesh(hairGeo, mkMat(), crowdN);
+  // One figure = one matrix: legs, heads & hair reuse the body's instance buffer
   legs.instanceMatrix = crowdBody.instanceMatrix;
   heads.instanceMatrix = crowdBody.instanceMatrix;
+  hair.instanceMatrix = crowdBody.instanceMatrix;
 
   // Raised cheering arms for a chunk of the jumpers (own buffer, y-synced)
   const armLGeo = new THREE.BoxGeometry(0.36, 0.11, 0.11); armLGeo.rotateZ(0.85); armLGeo.translate(-0.31, 1.16, 0);
@@ -2032,6 +2026,9 @@ const crowdFlagSpots = [];
     .map(c => new THREE.Color(c));
   const pants = [0x2B3A4A, 0x4A3A2B, 0x33424E, 0x6B4A33, 0x444455].map(c => new THREE.Color(c));
   const skin = [0xFFCC88, 0xE8B070, 0xC98A50, 0x8C5A2E, 0xFFD9A0].map(c => new THREE.Color(c));
+  // Hair browns/blacks/greys + a few bright caps/hats — kills the bald look
+  const hairCol = [0x3A2A1A, 0x5A3A22, 0x8A6A3A, 0x222222, 0x6B6B6B, 0xC9A24B,
+                   0xEE3B3B, 0x3BA4E8, 0xFFC41F, 0xF6FAFC].map(c => new THREE.Color(c));
 
   crowdZ = new Float32Array(crowdN);
   crowdAmp = new Float32Array(crowdN);
@@ -2048,6 +2045,7 @@ const crowdFlagSpots = [];
     legs.setColorAt(i, pants[(Math.random() * pants.length) | 0]);
     const skinTone = skin[(Math.random() * skin.length) | 0];
     heads.setColorAt(i, skinTone);
+    hair.setColorAt(i, hairCol[(Math.random() * hairCol.length) | 0]);
     crowdZ[i] = p.z;
     crowdAmp[i] = Math.random() < 0.62 ? 0.10 + Math.random() * 0.32 : 0; // jumpers vs standers
     crowdFreq[i] = 2.0 + Math.random() * 1.7;
@@ -2065,7 +2063,7 @@ const crowdFlagSpots = [];
   });
   crowdArmL.count = crowdArmN;
   crowdArmR.count = crowdArmN;
-  for (const m of [legs, crowdBody, heads, crowdArmL, crowdArmR]) {
+  for (const m of [legs, crowdBody, heads, hair, crowdArmL, crowdArmR]) {
     m.castShadow = m !== crowdArmL && m !== crowdArmR;
     m.frustumCulled = false;
     scene.add(m);
